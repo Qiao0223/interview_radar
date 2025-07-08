@@ -1,6 +1,6 @@
-package com.interviewradar.data.repository;
+package com.interviewradar.model.repository;
 
-import com.interviewradar.data.entity.PendingQuestionEntity;
+import com.interviewradar.model.entity.PendingQuestionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PendingQuestionRepository extends JpaRepository<PendingQuestionEntity, Long> {

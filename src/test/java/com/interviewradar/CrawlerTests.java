@@ -1,7 +1,7 @@
 package com.interviewradar;
 
 import com.interviewradar.crawler.CrawlerService;
-import com.interviewradar.data.repository.InterviewRepository;
+import com.interviewradar.model.repository.InterviewRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -4,17 +4,18 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewradar.common.Utils;
 import com.interviewradar.config.ClassificationProperties;
-import com.interviewradar.data.entity.CategoryEntity;
-import com.interviewradar.data.entity.QuestionEntity;
-import com.interviewradar.data.repository.CategoryRepository;
-import com.interviewradar.data.repository.QuestionRepository;
+import com.interviewradar.model.entity.CategoryEntity;
+import com.interviewradar.model.entity.ExtractedQuestionEntity;
+import com.interviewradar.model.repository.CategoryRepository;
+import com.interviewradar.model.repository.ExtractedQuestionRepository;
 import com.interviewradar.llm.LanguageModel;
 import com.interviewradar.llm.PromptTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,15 +27,19 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ClassificationService {
+    @Lazy
+    @Autowired
+    ClassificationService selfProxy;
+
     private final LanguageModel llm;                  // LLM 接口，用于生成分类提示
     private final CategoryRepository categoryRepo;    // 类别仓库，读取所有可用类别
-    private final QuestionRepository questionRepo;    // 题目仓库，用于保存分类结果
+    private final ExtractedQuestionRepository questionRepo;    // 题目仓库，用于保存分类结果
     private final ClassificationProperties props;     // batchSize 配置
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 对象映射器，用于解析 LLM 返回的 JSON
 
     public ClassificationService(LanguageModel llm,
                                  CategoryRepository categoryRepo,
-                                 QuestionRepository questionRepo,
+                                 ExtractedQuestionRepository questionRepo,
                                  ClassificationProperties props) {
         this.llm = llm;
         this.categoryRepo = categoryRepo;
@@ -45,14 +50,14 @@ public class ClassificationService {
     /**
      * 批量分类，一次请求多条，批次大小从配置读取
      */
-    public void classifyBatch(List<QuestionEntity> questions) {
+    public void classifyBatch(List<ExtractedQuestionEntity> questions) {
         int batchSize = props.getBatchSize();
         List<CategoryEntity> allCats = categoryRepo.findAll();
         String formattedCats = formatCategories(allCats);
 
         for (int i = 0; i < questions.size(); i += batchSize) {
-            List<QuestionEntity> batch = questions.subList(i, Math.min(i + batchSize, questions.size()));
-            processBatch(batch, formattedCats);
+            List<ExtractedQuestionEntity> batch = questions.subList(i, Math.min(i + batchSize, questions.size()));
+            selfProxy.processBatch(batch, formattedCats);
         }
     }
 
@@ -60,25 +65,29 @@ public class ClassificationService {
      * 单独事务，分批提交
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processBatch(List<QuestionEntity> batch, String formattedCats) {
+    public void processBatch(List<ExtractedQuestionEntity> batch, String formattedCats) {
         String prompt = buildBatchPrompt(batch, formattedCats);
         String raw = llm.generate(prompt);
-        String json = Utils.extractJson(raw);
+        String json = Utils.extractJsonArray(raw);
         Map<Integer, List<Long>> map = parseBatchResult(json);
 
         for (int idx = 0; idx < batch.size(); idx++) {
-            QuestionEntity q = batch.get(idx);
-            int index = idx + 1;
-            List<Long> chosen = map.get(index);
-            if (chosen == null || chosen.isEmpty()) {
-                continue;
-            }
+            ExtractedQuestionEntity detached = batch.get(idx);
+            List<Long> chosen = map.get(idx + 1);
+            if (chosen == null || chosen.isEmpty()) continue;
 
+            // 1) 重新 load 出一个 managed 实体
+            ExtractedQuestionEntity q = questionRepo.findById(detached.getId())
+                    .orElseThrow(() -> new IllegalStateException("找不到问题实体 id=" + detached.getId()));
+
+            // 2) 这时 q.getCategories() 就是可以 lazy-load 的
             Set<CategoryEntity> cats = q.getCategories();
             for (Long catId : chosen) {
                 categoryRepo.findById(catId).ifPresent(cats::add);
             }
             q.setClassified(true);
+
+            // 3) 保存
             questionRepo.save(q);
         }
     }
@@ -88,7 +97,7 @@ public class ClassificationService {
      * @param formattedCats 已格式化的所有类别列表字符串
      * @return 替换完占位符后的完整 Prompt 文本
      */
-    private String buildBatchPrompt(List<QuestionEntity> batch, String formattedCats) {
+    private String buildBatchPrompt(List<ExtractedQuestionEntity> batch, String formattedCats) {
         // 获取原始模板
         String template = PromptTemplate.QUESTION_CLASSIFICATION.getTemplate();
         // 替换批次数量与分类列表

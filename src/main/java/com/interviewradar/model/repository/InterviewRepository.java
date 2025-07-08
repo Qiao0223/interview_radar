@@ -1,6 +1,6 @@
-package com.interviewradar.data.repository;
+package com.interviewradar.model.repository;
 
-import com.interviewradar.data.entity.InterviewEntity;
+import com.interviewradar.model.entity.InterviewEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface InterviewRepository extends JpaRepository<InterviewEntity, Long> {

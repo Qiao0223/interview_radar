@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  milvus:
+    image: milvusdb/milvus:latest
+    container_name: milvus
+    command: ["milvus", "run", "standalone"]
+    ports:
+      - "19530:19530"   # gRPC
+      - "19121:19121"   # HTTP REST
+    environment:
+      TZ: Asia/Shanghai

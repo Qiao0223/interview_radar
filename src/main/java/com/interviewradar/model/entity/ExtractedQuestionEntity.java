@@ -1,4 +1,4 @@
-package com.interviewradar.data.entity;
+package com.interviewradar.model.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,12 +6,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Entity
-@Table(name = "questions")
+@Table(name = "extracted_question")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
-public class QuestionEntity {
+public class ExtractedQuestionEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -28,22 +29,30 @@ public class QuestionEntity {
     @Column(name = "parsed", nullable = false)
     private boolean parsed;
 
+    @Column(name="created_at", nullable=false)
+    private LocalDateTime createdAt;
+
+    @Column(name="updated_at", nullable=false)
+    private LocalDateTime updatedAt;
+
+
     // 多对多：问题 ↔ 分类
     @ManyToMany
     @JoinTable(
-            name = "question_categories",
-            joinColumns = @JoinColumn(name = "question_id"),
-            inverseJoinColumns = @JoinColumn(name = "category_id")
+            name="question_to_category",
+            joinColumns=@JoinColumn(name="question_id"),
+            inverseJoinColumns=@JoinColumn(name="category_id")
     )
     private Set<CategoryEntity> categories;
 
-    // 多对多：问题 ↔ 知识点
     @ManyToMany
     @JoinTable(
-            name = "question_knowledge_points",
-            joinColumns = @JoinColumn(name = "question_id"),
-            inverseJoinColumns = @JoinColumn(name = "knowledge_point_id")
+            name="extracted_question_canonical",
+            joinColumns=@JoinColumn(name="extracted_question_id"),
+            inverseJoinColumns=@JoinColumn(name="canonical_question_id")
     )
-    private Set<KnowledgePointEntity> knowledgePoints;
+    private Set<CanonicalQuestionEntity> canonicalQuestions;
+
+
 }
 

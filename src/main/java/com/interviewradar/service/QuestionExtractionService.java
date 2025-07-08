@@ -2,10 +2,10 @@ package com.interviewradar.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.interviewradar.data.entity.InterviewEntity;
-import com.interviewradar.data.entity.QuestionEntity;
-import com.interviewradar.data.repository.InterviewRepository;
-import com.interviewradar.data.repository.QuestionRepository;
+import com.interviewradar.model.entity.InterviewEntity;
+import com.interviewradar.model.entity.ExtractedQuestionEntity;
+import com.interviewradar.model.repository.ExtractedQuestionRepository;
+import com.interviewradar.model.repository.InterviewRepository;
 import com.interviewradar.llm.LanguageModel;
 import com.interviewradar.llm.PromptTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,12 +29,12 @@ public class QuestionExtractionService {
     private QuestionExtractionService selfProxy;
 
     private final LanguageModel llm; // 大语言模型接口
-    private final QuestionRepository questionRepo; // 问题存储仓库
+    private final ExtractedQuestionRepository questionRepo; // 问题存储仓库
     private final InterviewRepository interviewRepo; // 面经存储仓库
     private final ObjectMapper mapper = new ObjectMapper(); // 用于解析 JSON
 
     public QuestionExtractionService(LanguageModel llm,
-                                     QuestionRepository questionRepo,
+                                     ExtractedQuestionRepository questionRepo,
                                      InterviewRepository interviewRepo) {
         this.llm = llm;
         this.questionRepo = questionRepo;
@@ -55,6 +55,7 @@ public class QuestionExtractionService {
         // 2. 调用大语言模型生成响应
         String llmResponse = llm.generate(prompt);
 
+        System.out.println("原始面经 >>>\n" + rawInterview);
         System.out.println("LLM 原始返回 >>>\n" + llmResponse);
 
         // 3. 解析 JSON 响应：格式应为 { "questions": ["问题1", "问题2", ... ] }
@@ -90,10 +91,10 @@ public class QuestionExtractionService {
             interviewRepo.save(interview);
             // 提取问题
             List<String> questions = extractQuestions(rawInterview);
-            List<QuestionEntity> entities = new ArrayList<>();
+            List<ExtractedQuestionEntity> entities = new ArrayList<>();
             for (String q : questions) {
                 // 构建问题实体对象
-                QuestionEntity qe = QuestionEntity.builder()
+                ExtractedQuestionEntity qe = ExtractedQuestionEntity.builder()
                         .interview(interviewRepo.getReferenceById(interviewId))
                         .questionText(q)
                         .build();

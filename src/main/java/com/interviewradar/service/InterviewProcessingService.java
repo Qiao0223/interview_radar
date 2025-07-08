@@ -1,20 +1,16 @@
 package com.interviewradar.service;
 
-import com.interviewradar.data.entity.InterviewEntity;
-import com.interviewradar.data.entity.QuestionEntity;
-import com.interviewradar.data.repository.InterviewRepository;
-import com.interviewradar.data.repository.QuestionRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.interviewradar.model.entity.InterviewEntity;
+import com.interviewradar.model.entity.ExtractedQuestionEntity;
+import com.interviewradar.model.repository.ExtractedQuestionRepository;
+import com.interviewradar.model.repository.InterviewRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -24,7 +20,7 @@ public class InterviewProcessingService {
 
     private final ThreadPoolTaskExecutor taskExecutor;
     private final InterviewRepository interviewRepo;
-    private final QuestionRepository questionRepo;
+    private final ExtractedQuestionRepository questionRepo;
     private final QuestionExtractionService extractionService;
     private final ClassificationService classificationService;
     private final Semaphore extractSemaphore;
@@ -34,7 +30,7 @@ public class InterviewProcessingService {
     public InterviewProcessingService(
             @Qualifier("taskExecutor") ThreadPoolTaskExecutor taskExecutor,
             InterviewRepository interviewRepo,
-            QuestionRepository questionRepo,
+            ExtractedQuestionRepository questionRepo,
             QuestionExtractionService extractionService,
             ClassificationService classificationService,
             @Value("${concurrency.extract-tasks}") int maxExtract,
@@ -94,7 +90,7 @@ public class InterviewProcessingService {
     /** 分类阶段入口，受限于 classifySemaphore */
     private void runClassification() {
         if (!windowOpen.get()) return;
-        List<QuestionEntity> toClassify = questionRepo.findAll().stream()
+        List<ExtractedQuestionEntity> toClassify = questionRepo.findAll().stream()
                 .filter(q -> !q.isClassified())
                 .collect(Collectors.toList());
 

@@ -1,9 +1,8 @@
 package com.interviewradar;
 
-import com.interviewradar.data.entity.InterviewEntity;
-import com.interviewradar.data.entity.QuestionEntity;
-import com.interviewradar.data.repository.InterviewRepository;
-import com.interviewradar.data.repository.QuestionRepository;
+import com.interviewradar.model.entity.InterviewEntity;
+import com.interviewradar.model.repository.ExtractedQuestionRepository;
+import com.interviewradar.model.repository.InterviewRepository;
 import com.interviewradar.llm.LanguageModel;
 import com.interviewradar.service.QuestionExtractionService;
 import org.junit.Test;
@@ -26,7 +25,7 @@ public class QuestionExtractionTests {
     @Autowired
     InterviewRepository interviewRepo;
     @Autowired
-    QuestionRepository qRepo;
+    ExtractedQuestionRepository qRepo;
 
     @Test
     public void llmGenerateCanBeCalled() throws Exception {

@@ -1,9 +1,8 @@
 package com.interviewradar;
 
-import com.interviewradar.data.entity.InterviewEntity;
-import com.interviewradar.data.entity.QuestionEntity;
-import com.interviewradar.data.repository.InterviewRepository;
-import com.interviewradar.data.repository.QuestionRepository;
+import com.interviewradar.model.entity.InterviewEntity;
+import com.interviewradar.model.repository.ExtractedQuestionRepository;
+import com.interviewradar.model.repository.InterviewRepository;
 import com.interviewradar.service.InterviewProcessingService;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +33,7 @@ class InterviewProcessingTest {
     private InterviewRepository interviewRepo;
 
     @Autowired
-    private QuestionRepository questionRepo;
+    private ExtractedQuestionRepository questionRepo;
 
     private Set<Long> pendingIds;
 

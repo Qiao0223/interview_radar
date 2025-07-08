@@ -1,4 +1,4 @@
-package com.interviewradar.data.dto; // 或者 com.interviewradar.data，看你实际放哪
+package com.interviewradar.model.dto; // 或者 com.interviewradar.data，看你实际放哪
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

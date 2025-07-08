@@ -1,9 +1,9 @@
 package com.interviewradar.crawler;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.interviewradar.data.entity.InterviewEntity;
-import com.interviewradar.data.repository.InterviewRepository;
-import com.interviewradar.data.dto.RawInterviewDTO;
+import com.interviewradar.model.entity.InterviewEntity;
+import com.interviewradar.model.repository.InterviewRepository;
+import com.interviewradar.model.dto.RawInterviewDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

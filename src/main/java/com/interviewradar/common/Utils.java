@@ -24,4 +24,15 @@ public class Utils {
         return text;
     }
 
+    public static String extractJsonArray(String text) {
+        String t = text.trim();
+        int aStart = t.indexOf('[');
+        int aEnd   = t.lastIndexOf(']');
+        if (aStart >= 0 && aEnd > aStart) {
+            return t.substring(aStart, aEnd + 1);
+        }
+        throw new IllegalArgumentException("文本中没有找到 JSON 数组");
+    }
+
+
 }

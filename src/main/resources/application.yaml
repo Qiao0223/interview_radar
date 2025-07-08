@@ -3,6 +3,11 @@ spring:
         url: jdbc:mysql://localhost:3306/interview_radar?useSSL=false&serverTimezone=UTC
         username: root
         password: abc123
+        hikari:
+            maximum-pool-size: 200     # 连接池最大连接数
+            minimum-idle: 10          # 最小空闲连接
+            idle-timeout: 30000       # 空闲连接最大存活时间
+            connection-timeout: 300000 # 获取连接的最大等待时间
 
     jpa:
         hibernate:
@@ -33,11 +38,27 @@ classification:
     batch-size: 10
 
 threadpool:
-    core-size: 5
-    max-size: 10
-    queue-capacity: 50
+    core-size: 200
+    max-size: 200
+    queue-capacity: 200
 
 concurrency:
-    extract-tasks: 20    # 提取阶段最大并发
+    extract-tasks: 200    # 提取阶段最大并发
     classify-tasks: 10   # 分类阶段最大并发
+
+#vectordb:
+#    host: localhost
+#    port: 19530
+#    timeout: 1000
+#    emb-dim: 1536
+#    collection: knowledge_points
+#    index:
+#        type: HNSW
+#        params:
+#            M: 16
+#            efConstruction: 200
+#            ef: 200
+#    shards: 1
+#    replicas: 1
+#    metric: IP
 

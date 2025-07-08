@@ -1,4 +1,4 @@
-package com.interviewradar.data.entity;
+package com.interviewradar.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "interviews")
+@Table(name = "interview")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
