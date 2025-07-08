@@ -14,22 +14,12 @@ spring:
             ddl-auto: validate
         show-sql: true
 
-llm:
-    provider: deepseek
-
-openai:
-    api-key: your_openai_key
-    model: gpt-4o
-
-aliyun:
-    api-key: sk-c8537643758b4d8da98f06a99dc603d9
-    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-    model:    qwen-plus
-
-deepseek:
-    api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
-    base-url: https://api.deepseek.com/v1
-    model: deepseek-reasoner
+langchain4j:
+    open-ai:
+        chat-model:
+            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+            base-url: https://api.deepseek.com/v1
+            model-name: deepseek-reasoner
 
 crawler:
     delay-ms: 5000

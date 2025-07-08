@@ -6,8 +6,8 @@ import com.interviewradar.model.entity.InterviewEntity;
 import com.interviewradar.model.entity.ExtractedQuestionEntity;
 import com.interviewradar.model.repository.ExtractedQuestionRepository;
 import com.interviewradar.model.repository.InterviewRepository;
-import com.interviewradar.llm.LanguageModel;
 import com.interviewradar.llm.PromptTemplate;
+import dev.langchain4j.model.chat.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -28,15 +28,15 @@ public class QuestionExtractionService {
     @Autowired
     private QuestionExtractionService selfProxy;
 
-    private final LanguageModel llm; // 大语言模型接口
+    private final ChatModel chatModel; // LangChain4j Chat model
     private final ExtractedQuestionRepository questionRepo; // 问题存储仓库
     private final InterviewRepository interviewRepo; // 面经存储仓库
     private final ObjectMapper mapper = new ObjectMapper(); // 用于解析 JSON
 
-    public QuestionExtractionService(LanguageModel llm,
+    public QuestionExtractionService(ChatModel chatModel,
                                      ExtractedQuestionRepository questionRepo,
                                      InterviewRepository interviewRepo) {
-        this.llm = llm;
+        this.chatModel = chatModel;
         this.questionRepo = questionRepo;
         this.interviewRepo  = interviewRepo;
     }
@@ -49,11 +49,13 @@ public class QuestionExtractionService {
      */
     public List<String> extractQuestions(String rawInterview) throws Exception {
         // 1. 构造 prompt，将原始面经注入模板
-        String prompt = PromptTemplate.QUESTION_EXTRACTION.getTemplate()
-                .replace("{rawInterview}", rawInterview);
+        dev.langchain4j.model.input.PromptTemplate template =
+                dev.langchain4j.model.input.PromptTemplate.from(
+                        PromptTemplate.QUESTION_EXTRACTION.getTemplate());
+        String prompt = template.apply(java.util.Map.of("rawInterview", rawInterview)).text();
 
         // 2. 调用大语言模型生成响应
-        String llmResponse = llm.generate(prompt);
+        String llmResponse = chatModel.chat(prompt);
 
         System.out.println("原始面经 >>>\n" + rawInterview);
         System.out.println("LLM 原始返回 >>>\n" + llmResponse);
