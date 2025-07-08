@@ -6,7 +6,7 @@ import com.interviewradar.model.entity.InterviewEntity;
 import com.interviewradar.model.repository.CategoryRepository;
 import com.interviewradar.model.repository.ExtractedQuestionRepository;
 import com.interviewradar.model.repository.InterviewRepository;
-import com.interviewradar.llm.LanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import com.interviewradar.service.ClassificationService;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
@@ -20,13 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(properties = "llm.provider=aliyun")
+@SpringBootTest
 public class ClassificationTests {
 
     @Autowired
     ClassificationService classificationService;
     @Autowired
-    LanguageModel llm;
+    ChatModel chatModel;
     @Autowired
     InterviewRepository interviewRepo;
     @Autowired

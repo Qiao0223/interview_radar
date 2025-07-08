@@ -21,9 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@TestPropertySource(properties = {
-        "llm.provider=aliyun"
-})
+@TestPropertySource
 class InterviewProcessingTest {
 
     @Autowired

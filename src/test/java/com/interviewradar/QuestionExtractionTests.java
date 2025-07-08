@@ -3,7 +3,7 @@ package com.interviewradar;
 import com.interviewradar.model.entity.InterviewEntity;
 import com.interviewradar.model.repository.ExtractedQuestionRepository;
 import com.interviewradar.model.repository.InterviewRepository;
-import com.interviewradar.llm.LanguageModel;
+import dev.langchain4j.model.chat.ChatModel;
 import com.interviewradar.service.QuestionExtractionService;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
@@ -15,13 +15,13 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.util.List;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(properties = "llm.provider=aliyun")
+@SpringBootTest
 public class QuestionExtractionTests {
 
     @Autowired
     QuestionExtractionService service;
     @Autowired
-    LanguageModel llm;
+    ChatModel chatModel;
     @Autowired
     InterviewRepository interviewRepo;
     @Autowired
@@ -30,7 +30,7 @@ public class QuestionExtractionTests {
     @Test
     public void llmGenerateCanBeCalled() throws Exception {
         // 验证 llm.generate 方法本身能正常调用
-        String out = llm.generate("hello");
+        String out = chatModel.chat("hello");
         Assertions.assertNotNull(out); // 可选，验证返回结果非空
     }
 

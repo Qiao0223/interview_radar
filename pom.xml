@@ -85,8 +85,8 @@
         <!-- LangChain4j -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>1.1.0</version>
+            <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+            <version>1.1.0-beta7</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.milvus/milvus-sdk-java -->
         <dependency>

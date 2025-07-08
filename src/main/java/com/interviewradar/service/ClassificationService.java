@@ -8,8 +8,8 @@ import com.interviewradar.model.entity.CategoryEntity;
 import com.interviewradar.model.entity.ExtractedQuestionEntity;
 import com.interviewradar.model.repository.CategoryRepository;
 import com.interviewradar.model.repository.ExtractedQuestionRepository;
-import com.interviewradar.llm.LanguageModel;
 import com.interviewradar.llm.PromptTemplate;
+import dev.langchain4j.model.chat.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -31,17 +31,17 @@ public class ClassificationService {
     @Autowired
     ClassificationService selfProxy;
 
-    private final LanguageModel llm;                  // LLM 接口，用于生成分类提示
+    private final ChatModel chatModel;                  // LangChain4j Chat model
     private final CategoryRepository categoryRepo;    // 类别仓库，读取所有可用类别
     private final ExtractedQuestionRepository questionRepo;    // 题目仓库，用于保存分类结果
     private final ClassificationProperties props;     // batchSize 配置
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 对象映射器，用于解析 LLM 返回的 JSON
 
-    public ClassificationService(LanguageModel llm,
+    public ClassificationService(ChatModel chatModel,
                                  CategoryRepository categoryRepo,
                                  ExtractedQuestionRepository questionRepo,
                                  ClassificationProperties props) {
-        this.llm = llm;
+        this.chatModel = chatModel;
         this.categoryRepo = categoryRepo;
         this.questionRepo = questionRepo;
         this.props = props;
@@ -67,7 +67,7 @@ public class ClassificationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processBatch(List<ExtractedQuestionEntity> batch, String formattedCats) {
         String prompt = buildBatchPrompt(batch, formattedCats);
-        String raw = llm.generate(prompt);
+        String raw = chatModel.chat(prompt);
         String json = Utils.extractJsonArray(raw);
         Map<Integer, List<Long>> map = parseBatchResult(json);
 
