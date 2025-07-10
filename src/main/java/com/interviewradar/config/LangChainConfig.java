@@ -2,36 +2,32 @@ package com.interviewradar.config;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.Data;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 
 @Configuration
+@ConfigurationProperties(prefix = "langchain4j.open-ai.chat-model")
+@Data
 public class LangChainConfig {
 
-    @Value("${langchain4j.open-ai.chat-model.api-key}")
-    private String chatApiKey;
-
-    @Value("${langchain4j.open-ai.chat-model.base-url}")
-    private String chatBaseUrl;
-
-    @Value("${langchain4j.open-ai.chat-model.model-name}")
-    private String chatModelName;
-
-    @Value("${langchain4j.open-ai.chat-model.timeout}")
-    private Duration chatTimeout;
+    private String apiKey;
+    private String baseUrl;
+    private String modelName;
+    private Duration timeout;
 
     @Primary
     @Bean
     public ChatModel chatModel() {
         return OpenAiChatModel.builder()
-                .apiKey(chatApiKey)
-                .baseUrl(chatBaseUrl)
-                .modelName(chatModelName)
-                .timeout(chatTimeout)
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .modelName(modelName)
+                .timeout(timeout)
                 .build();
     }
 }

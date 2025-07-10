@@ -14,7 +14,7 @@ import java.time.Duration;
 @Data
 @Configuration
 @ConfigurationProperties(prefix = "aliyun.embedding")
-public class EmbeddingConfig {
+public class AliyunEmbeddingConfig {
 
     /**
      * Bound from application.yml → aliyun.embedding.*
