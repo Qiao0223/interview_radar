@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+
 @Entity
 @Table(name = "extracted_question")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
@@ -36,5 +37,21 @@ public class ExtractedQuestionEntity {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @ManyToMany
+    @JoinTable(
+            name = "question_to_category",
+            joinColumns = @JoinColumn(name = "question_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<CategoryEntity> categories;
+
+    @ManyToMany
+    @JoinTable(
+            name = "extracted_question_canonical",
+            joinColumns = @JoinColumn(name = "extracted_question_id"),
+            inverseJoinColumns = @JoinColumn(name = "canonical_question_id")
+    )
+    private Set<CanonicalQuestionEntity> canonicalQuestions;
 }
 

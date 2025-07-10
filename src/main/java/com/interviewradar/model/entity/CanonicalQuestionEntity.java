@@ -23,8 +23,12 @@ public class CanonicalQuestionEntity {
     @Column(name="text", nullable=false, columnDefinition="TEXT")
     private String text;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private CategoryEntity category;
+
     @Column(name="count", nullable=false)
-    private Integer count = 0;
+    private Integer count = 1;
 
     @Column(name="created_at", nullable=false)
     private LocalDateTime createdAt;

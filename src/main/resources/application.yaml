@@ -49,3 +49,8 @@ concurrency:
     extract-tasks: 200    # 提取阶段最大并发
     classify-tasks: 10   # 分类阶段最大并发
 
+milvus:
+    host: localhost
+    port: 19530
+    embedding-dim: 1024
+

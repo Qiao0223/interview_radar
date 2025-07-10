@@ -85,7 +85,7 @@ public class ClassificationService {
             for (Long catId : chosen) {
                 categoryRepo.findById(catId).ifPresent(cats::add);
             }
-            q.setClassified(true);
+            q.setCategorized(true);
 
             // 3) 保存
             questionRepo.save(q);
