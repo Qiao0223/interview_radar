@@ -53,7 +53,7 @@ public class QuestionExtractionService {
                 dev.langchain4j.model.input.PromptTemplate.from(
                         PromptTemplate.QUESTION_EXTRACTION.getTemplate());
         String prompt = template.apply(java.util.Map.of("rawInterview", rawInterview)).text();
-
+        System.out.println("最终构造的 prompt >>>\n" + prompt);
         // 2. 调用大语言模型生成响应
         String llmResponse = chatModel.chat(prompt);
 

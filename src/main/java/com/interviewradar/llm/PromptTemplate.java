@@ -40,7 +40,7 @@ public enum PromptTemplate {
             }
             ```
             现在，请根据以上说明，处理下面这段面经原文，返回只包含 `questions` 数组的 JSON：
-            {rawInterview}
+            {{rawInterview}}
     """),
 
     // 2. 问题分类模板
@@ -54,7 +54,7 @@ public enum PromptTemplate {
     }
     
     分类列表（编号→名称（说明））：
-    {categories}
+    ${categories}
     
     问题列表：
     1. {questionText1}

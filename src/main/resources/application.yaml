@@ -1,6 +1,6 @@
 spring:
     datasource:
-        url: jdbc:mysql://localhost:3306/interview_radar?useSSL=false&serverTimezone=UTC
+        url: jdbc:mysql://localhost:3306/interview_radar?useSSL=false&serverTimezone=Asia/Shanghai
         username: root
         password: abc123
         hikari:
@@ -17,9 +17,22 @@ spring:
 langchain4j:
     open-ai:
         chat-model:
-            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
-            base-url: https://api.deepseek.com/v1
-            model-name: deepseek-reasoner
+#           deepseek
+#            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+#            base-url: https://api.deepseek.com/v1
+#            model-name: deepseek-reasoner
+
+#           aliyun
+            api-key: sk-c8537643758b4d8da98f06a99dc603d9
+            base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+            model-name: qwen-plus
+
+aliyun:
+    embedding:
+        api-key: sk-c8537643758b4d8da98f06a99dc603d9
+        base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+        model: text-embedding-v4
+        dimension: 1024
 
 crawler:
     delay-ms: 5000
@@ -35,20 +48,4 @@ threadpool:
 concurrency:
     extract-tasks: 200    # 提取阶段最大并发
     classify-tasks: 10   # 分类阶段最大并发
-
-#vectordb:
-#    host: localhost
-#    port: 19530
-#    timeout: 1000
-#    emb-dim: 1536
-#    collection: knowledge_points
-#    index:
-#        type: HNSW
-#        params:
-#            M: 16
-#            efConstruction: 200
-#            ef: 200
-#    shards: 1
-#    replicas: 1
-#    metric: IP
 
