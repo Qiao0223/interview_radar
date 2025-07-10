@@ -91,7 +91,7 @@ public class InterviewProcessingService {
     private void runClassification() {
         if (!windowOpen.get()) return;
         List<ExtractedQuestionEntity> toClassify = questionRepo.findAll().stream()
-                .filter(q -> !q.isClassified())
+                .filter(q -> !q.getCategorized())
                 .collect(Collectors.toList());
 
         if (toClassify.isEmpty()) return;

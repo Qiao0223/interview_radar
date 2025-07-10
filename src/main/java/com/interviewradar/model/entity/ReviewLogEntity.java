@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class reviewLogEntity {
+public class ReviewLogEntity {
     @Id @GeneratedValue(strategy= GenerationType.IDENTITY)
     private Long id;
 
@@ -32,8 +32,8 @@ public class reviewLogEntity {
     @Column(name="reviewer", nullable=false, length=100)
     private String reviewer;
 
-    @Column(name="comment", columnDefinition="TEXT")
-    private String comment;
+    @Column(name="review_comment", columnDefinition="TEXT")
+    private String reviewComment;
 
     @Column(name="action_time", nullable=false)
     private LocalDateTime actionTime;

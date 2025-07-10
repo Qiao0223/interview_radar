@@ -30,8 +30,8 @@ public class TopicEntity {
     @Column(name="created_at", nullable=false)
     private LocalDateTime createdAt;
 
-    @Column(name="count", nullable=false)
-    private Integer count = 1;
+    @Column(name="occurrence_count", nullable=false)
+    private Integer occurrenceCount = 0;
 
     @Column(name="updated_at", nullable=false)
     private LocalDateTime updatedAt;

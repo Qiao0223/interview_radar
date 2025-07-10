@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Entity
 @Table(name = "category")
@@ -30,4 +31,7 @@ public class CategoryEntity {
 
     @Column(name="updated_at", nullable=false)
     private LocalDateTime updatedAt;
+
+    @ManyToMany(mappedBy = "categories")
+    private Set<ExtractedQuestionEntity> questions;
 }
