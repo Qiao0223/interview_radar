@@ -19,7 +19,7 @@ public class AliyunEmbeddingModel implements EmbeddingModel {
 
     @Override
     public Response<Embedding> embed(String text) {
-        float[] vector = aliyunEmbeddingService.embed(text);
+        float[] vector = aliyunEmbeddingService.embedRaw(text);
         Embedding embedding = new Embedding(vector);
         return Response.from(embedding);
     }

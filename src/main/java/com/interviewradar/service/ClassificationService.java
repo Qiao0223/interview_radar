@@ -16,10 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -62,7 +59,7 @@ public class ClassificationService {
     }
 
     /**
-     * 单独事务，分批提交
+     * 处理一批题目，打印原问题和分类名称
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processBatch(List<ExtractedQuestionEntity> batch, String formattedCats) {
@@ -74,21 +71,29 @@ public class ClassificationService {
         for (int idx = 0; idx < batch.size(); idx++) {
             ExtractedQuestionEntity detached = batch.get(idx);
             List<Long> chosen = map.get(idx + 1);
-            if (chosen == null || chosen.isEmpty()) continue;
+            String questionText = detached.getQuestionText();
 
-            // 1) 重新 load 出一个 managed 实体
+            if (chosen == null || chosen.isEmpty()) {
+                System.out.println("原问题: " + questionText + " -> 未分到任何类别");
+                continue;
+            }
+
             ExtractedQuestionEntity q = questionRepo.findById(detached.getId())
                     .orElseThrow(() -> new IllegalStateException("找不到问题实体 id=" + detached.getId()));
 
-            // 2) 这时 q.getCategories() 就是可以 lazy-load 的
             Set<CategoryEntity> cats = q.getCategories();
+            List<String> names = new ArrayList<>();
             for (Long catId : chosen) {
-                categoryRepo.findById(catId).ifPresent(cats::add);
+                categoryRepo.findById(catId).ifPresent(c -> {
+                    cats.add(c);
+                    names.add(c.getName());
+                });
             }
             q.setCategorized(true);
-
-            // 3) 保存
             questionRepo.save(q);
+
+            // 打印原问题及分类结果
+            System.out.println("原问题: " + questionText + " -> 分类: " + String.join(", ", names));
         }
     }
     /**
@@ -102,9 +107,9 @@ public class ClassificationService {
         String template = PromptTemplate.QUESTION_CLASSIFICATION.getTemplate();
         // 替换批次数量与分类列表
         template = template.replace("${n}", String.valueOf(batch.size()))
-                .replace("{categories}", formattedCats);
+                .replace("${categories}", formattedCats);
         // 截取到“问题列表：”这一行，后续自定义题目列表
-        String header = "问题列表：";
+        String header = "面试题列表：";
         int pos = template.indexOf(header);
         String prefix = template.substring(0, pos + header.length());
         // 构建题目清单，每行为“序号. 问题文本”

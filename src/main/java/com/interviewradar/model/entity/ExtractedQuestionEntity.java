@@ -23,7 +23,7 @@ public class ExtractedQuestionEntity {
     private InterviewEntity interview;
 
     @Lob
-    @Column(name = "question_text", nullable = false)
+    @Column(name = "question_text", nullable = false, columnDefinition = "TEXT")
     private String questionText;
 
     @Column(nullable = false)

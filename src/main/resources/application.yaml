@@ -4,7 +4,7 @@ spring:
         username: root
         password: abc123
         hikari:
-            maximum-pool-size: 200     # 连接池最大连接数
+            maximum-pool-size: 300     # 连接池最大连接数
             minimum-idle: 10          # 最小空闲连接
             idle-timeout: 30000       # 空闲连接最大存活时间
             connection-timeout: 300000 # 获取连接的最大等待时间
@@ -12,20 +12,21 @@ spring:
     jpa:
         hibernate:
             ddl-auto: validate
-        show-sql: true
+        show-sql: false
 
 langchain4j:
     open-ai:
         chat-model:
+            timeout: 600s
 #           deepseek
-#            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
-#            base-url: https://api.deepseek.com/v1
-#            model-name: deepseek-reasoner
+            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+            base-url: https://api.deepseek.com/v1
+            model-name: deepseek-reasoner
 
 #           aliyun
-            api-key: sk-c8537643758b4d8da98f06a99dc603d9
-            base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-            model-name: qwen-plus
+#            api-key: sk-c8537643758b4d8da98f06a99dc603d9
+#            base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+#            model-name: qwen-plus
 
 aliyun:
     embedding:
@@ -43,14 +44,11 @@ classification:
 threadpool:
     core-size: 200
     max-size: 200
-    queue-capacity: 200
+    queue-capacity: 1000
 
-concurrency:
-    extract-tasks: 200    # 提取阶段最大并发
-    classify-tasks: 10   # 分类阶段最大并发
 
 milvus:
-    host: localhost
+    host: 192.168.81.131
     port: 19530
     embedding-dim: 1024
 

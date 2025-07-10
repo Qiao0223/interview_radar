@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,7 +54,7 @@ public class QuestionExtractionService {
                 dev.langchain4j.model.input.PromptTemplate.from(
                         PromptTemplate.QUESTION_EXTRACTION.getTemplate());
         String prompt = template.apply(java.util.Map.of("rawInterview", rawInterview)).text();
-        System.out.println("最终构造的 prompt >>>\n" + prompt);
+        //System.out.println("最终构造的 prompt >>>\n" + prompt);
         // 2. 调用大语言模型生成响应
         String llmResponse = chatModel.chat(prompt);
 
@@ -94,11 +95,15 @@ public class QuestionExtractionService {
             // 提取问题
             List<String> questions = extractQuestions(rawInterview);
             List<ExtractedQuestionEntity> entities = new ArrayList<>();
+            LocalDateTime now = LocalDateTime.now();
             for (String q : questions) {
-                // 构建问题实体对象
                 ExtractedQuestionEntity qe = ExtractedQuestionEntity.builder()
-                        .interview(interviewRepo.getReferenceById(interviewId))
+                        .interview(interview)
                         .questionText(q)
+                        .canonicalized(false)
+                        .categorized(false)
+                        .createdAt(now)
+                        .updatedAt(now)
                         .build();
                 entities.add(qe);
             }
