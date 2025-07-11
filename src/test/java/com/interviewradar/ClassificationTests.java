@@ -42,7 +42,7 @@ public class ClassificationTests {
     @Test
     public void classifyBatch_directDbAndRealLlm() {
         // 从数据库读取所有 Question，并调用 classifyBatch
-        List<ExtractedQuestionEntity> questions = questionRepo.findAll();
+        List<ExtractedQuestionEntity> questions = questionRepo.findByCategorizedFalse();
         classificationService.classifyBatch(questions);
 
         // 重新从数据库加载，验证每条题目都被标记为已分类，且至少有一个 Category

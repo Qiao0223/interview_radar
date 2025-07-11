@@ -3,7 +3,6 @@ package com.interviewradar;
 import com.interviewradar.service.AliyunEmbeddingService;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.output.Response;
-import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -39,7 +38,7 @@ class AliyunEmbeddingTest {
 
         assertNotNull(response, "Response should not be null");
 
-        @NonNull Embedding embedding = response.content();
+        Embedding embedding = response.content();
         assertNotNull(embedding, "Embedding content should not be null");
 
         assertEquals(1024, embedding.vector().length, "Dimension must match config");

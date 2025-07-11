@@ -51,20 +51,6 @@ public class ClassificationService {
         this.taskExecutor = (ThreadPoolTaskExecutor) taskExecutor;
     }
 
-    /**
-     * 批量分类，一次请求多条，批次大小从配置读取
-     */
-//    public void classifyBatch(List<ExtractedQuestionEntity> questions) {
-//        int batchSize = props.getBatchSize();
-//        List<CategoryEntity> allCats = categoryRepo.findAll();
-//        String formattedCats = formatCategories(allCats);
-//
-//        for (int i = 0; i < questions.size(); i += batchSize) {
-//            List<ExtractedQuestionEntity> batch = questions.subList(i, Math.min(i + batchSize, questions.size()));
-//            selfProxy.processBatch(batch, formattedCats);
-//        }
-//    }
-
     public void classifyBatch(List<ExtractedQuestionEntity> questions) {
         int batchSize = props.getBatchSize();
         List<CategoryEntity> allCats = categoryRepo.findAll();

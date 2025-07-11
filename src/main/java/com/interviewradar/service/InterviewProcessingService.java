@@ -47,9 +47,8 @@ public class InterviewProcessingService {
             System.out.println("[INFO] 开始提取问题任务");
         }
 
-        List<InterviewEntity> pending = interviewRepo.findAll().stream()
-                .filter(iv -> !iv.isQuestionsExtracted())
-                .toList();
+        // 使用 repository 查询未提取的问题
+        List<InterviewEntity> pending = interviewRepo.findByQuestionsExtractedFalse();
 
         List<CompletableFuture<Void>> extractFuts = pending.stream()
                 .map(iv -> CompletableFuture.runAsync(
@@ -75,9 +74,7 @@ public class InterviewProcessingService {
             System.out.println("[INFO] 开始分类问题任务");
         }
 
-        List<ExtractedQuestionEntity> toClassify = questionRepo.findAll().stream()
-                .filter(q -> !q.getCategorized())
-                .collect(Collectors.toList());
+        List<ExtractedQuestionEntity> toClassify = questionRepo.findByCategorizedFalse();
 
         if (toClassify.isEmpty()) return;
 

@@ -34,5 +34,17 @@ public class Utils {
         throw new IllegalArgumentException("文本中没有找到 JSON 数组");
     }
 
-
+    /**
+     * 将 float[] 向量转成 JSON 数组字符串，如 "[0.12, -0.56, …]"
+     */
+    public static String toJsonArray(float[] vector) {
+        if (vector == null) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < vector.length; i++) {
+            sb.append(vector[i]);
+            if (i < vector.length - 1) sb.append(", ");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
 }

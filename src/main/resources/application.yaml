@@ -40,7 +40,7 @@ crawler:
     delay-ms: 5000
 
 classification:
-    batch-size: 50
+    batch-size: 5
 
 threadpool:
     core-size: 5

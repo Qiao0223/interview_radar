@@ -16,11 +16,8 @@ import java.util.List;
 public class AliyunEmbeddingService implements EmbeddingModel {
 
     private final EmbeddingModel delegate;
-    private final int dimension;
-
-    public AliyunEmbeddingService(EmbeddingModel delegate, int dimension) {
+    public AliyunEmbeddingService(EmbeddingModel delegate) {
         this.delegate = delegate;
-        this.dimension = dimension;
     }
 
     /**
@@ -50,8 +47,8 @@ public class AliyunEmbeddingService implements EmbeddingModel {
         return delegate.embedAll(segments);
     }
 
-    @Override
-    public int dimension() {
-        return dimension;
-    }
+//    @Override
+//    public int dimension() {
+//        return dimension;
+//    }
 }

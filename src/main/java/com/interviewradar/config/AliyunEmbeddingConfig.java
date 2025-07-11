@@ -35,6 +35,7 @@ public class AliyunEmbeddingConfig {
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .modelName(model)
+                .dimensions(dimension)
                 .timeout(Duration.ofSeconds(60))
                 .build();
     }
@@ -44,6 +45,6 @@ public class AliyunEmbeddingConfig {
      */
     @Bean
     public AliyunEmbeddingService aliyunEmbeddingService(EmbeddingModel aliyunEmbeddingModel) {
-        return new AliyunEmbeddingService(aliyunEmbeddingModel, dimension);
+        return new AliyunEmbeddingService(aliyunEmbeddingModel);
     }
 }

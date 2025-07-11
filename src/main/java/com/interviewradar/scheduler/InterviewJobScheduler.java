@@ -30,7 +30,7 @@ public class InterviewJobScheduler {
     @PostConstruct
     public void checkStartupWindow() {
         // 测试时强制开启窗口
-        processingService.startWindow();
+        //processingService.startWindow();
 
 
         LocalTime now = LocalTime.now();
