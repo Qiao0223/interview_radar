@@ -11,12 +11,16 @@ import com.interviewradar.model.repository.ExtractedQuestionRepository;
 import com.interviewradar.llm.PromptTemplate;
 import dev.langchain4j.model.chat.ChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -33,29 +37,54 @@ public class ClassificationService {
     private final ExtractedQuestionRepository questionRepo;    // 题目仓库，用于保存分类结果
     private final ClassificationProperties props;     // batchSize 配置
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 对象映射器，用于解析 LLM 返回的 JSON
+    private final ThreadPoolTaskExecutor taskExecutor;
 
     public ClassificationService(ChatModel chatModel,
                                  CategoryRepository categoryRepo,
                                  ExtractedQuestionRepository questionRepo,
-                                 ClassificationProperties props) {
+                                 ClassificationProperties props,
+                                 @Qualifier("taskExecutor") TaskExecutor taskExecutor) {
         this.chatModel = chatModel;
         this.categoryRepo = categoryRepo;
         this.questionRepo = questionRepo;
         this.props = props;
+        this.taskExecutor = (ThreadPoolTaskExecutor) taskExecutor;
     }
 
     /**
      * 批量分类，一次请求多条，批次大小从配置读取
      */
+//    public void classifyBatch(List<ExtractedQuestionEntity> questions) {
+//        int batchSize = props.getBatchSize();
+//        List<CategoryEntity> allCats = categoryRepo.findAll();
+//        String formattedCats = formatCategories(allCats);
+//
+//        for (int i = 0; i < questions.size(); i += batchSize) {
+//            List<ExtractedQuestionEntity> batch = questions.subList(i, Math.min(i + batchSize, questions.size()));
+//            selfProxy.processBatch(batch, formattedCats);
+//        }
+//    }
+
     public void classifyBatch(List<ExtractedQuestionEntity> questions) {
         int batchSize = props.getBatchSize();
         List<CategoryEntity> allCats = categoryRepo.findAll();
         String formattedCats = formatCategories(allCats);
 
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         for (int i = 0; i < questions.size(); i += batchSize) {
             List<ExtractedQuestionEntity> batch = questions.subList(i, Math.min(i + batchSize, questions.size()));
-            selfProxy.processBatch(batch, formattedCats);
+
+            futures.add(
+                    CompletableFuture.runAsync(
+                            () -> selfProxy.processBatch(batch, formattedCats),
+                            taskExecutor
+                    )
+            );
         }
+
+        // 等待所有并发任务完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 
     /**
@@ -63,6 +92,7 @@ public class ClassificationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processBatch(List<ExtractedQuestionEntity> batch, String formattedCats) {
+        System.out.println("Thread ID: " + Thread.currentThread().getId() + ", Name: " + Thread.currentThread().getName());
         String prompt = buildBatchPrompt(batch, formattedCats);
         String raw = chatModel.chat(prompt);
         String json = Utils.extractJsonArray(raw);

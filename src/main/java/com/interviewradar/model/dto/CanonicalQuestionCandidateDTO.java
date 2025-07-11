@@ -1,6 +1,6 @@
 package com.interviewradar.model.dto;
 
-import com.interviewradar.model.ReviewStatus;
+import com.interviewradar.model.enums.ReviewStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

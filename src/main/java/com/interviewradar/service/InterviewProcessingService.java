@@ -1,6 +1,3 @@
-/*
- * File: com/interviewradar/service/InterviewProcessingService.java
- */
 package com.interviewradar.service;
 
 import com.interviewradar.model.entity.InterviewEntity;
@@ -26,6 +23,9 @@ public class InterviewProcessingService {
     private final ClassificationService classificationService;
     private final AtomicBoolean windowOpen = new AtomicBoolean(false);
 
+    private final AtomicBoolean extractionStarted = new AtomicBoolean(false);
+    private final AtomicBoolean classificationStarted = new AtomicBoolean(false);
+
     public InterviewProcessingService(
             @Qualifier("taskExecutor") ThreadPoolTaskExecutor taskExecutor,
             InterviewRepository interviewRepo,
@@ -40,11 +40,13 @@ public class InterviewProcessingService {
         this.classificationService = classificationService;
     }
 
-    /**
-     * 开窗：并发提取后并发分类，使用同一线程池
-     */
     public void startWindow() {
         windowOpen.set(true);
+
+        if (extractionStarted.compareAndSet(false, true)) {
+            System.out.println("[INFO] 开始提取问题任务");
+        }
+
         List<InterviewEntity> pending = interviewRepo.findAll().stream()
                 .filter(iv -> !iv.isQuestionsExtracted())
                 .toList();
@@ -60,28 +62,28 @@ public class InterviewProcessingService {
                 .thenRunAsync(this::runClassification, taskExecutor);
     }
 
-    /**
-     * 关闭新任务提交
-     */
     public void stopWindow() {
         windowOpen.set(false);
+        extractionStarted.set(false);
+        classificationStarted.set(false);
     }
 
-    /**
-     * 并发分类所有待分类问题
-     */
     private void runClassification() {
-//        if (!windowOpen.get()) return;
-//
-//        List<ExtractedQuestionEntity> toClassify = questionRepo.findAll().stream()
-//                .filter(q -> !q.getCategorized())
-//                .collect(Collectors.toList());
-//
-//        if (toClassify.isEmpty()) return;
-//
-//        CompletableFuture.runAsync(
-//                () -> classificationService.classifyBatch(toClassify),
-//                taskExecutor
-//        );
+        if (!windowOpen.get()) return;
+
+        if (classificationStarted.compareAndSet(false, true)) {
+            System.out.println("[INFO] 开始分类问题任务");
+        }
+
+        List<ExtractedQuestionEntity> toClassify = questionRepo.findAll().stream()
+                .filter(q -> !q.getCategorized())
+                .collect(Collectors.toList());
+
+        if (toClassify.isEmpty()) return;
+
+        CompletableFuture.runAsync(
+                () -> classificationService.classifyBatch(toClassify),
+                taskExecutor
+        );
     }
 }

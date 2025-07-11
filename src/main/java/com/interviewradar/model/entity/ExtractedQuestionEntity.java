@@ -40,7 +40,7 @@ public class ExtractedQuestionEntity {
 
     @ManyToMany
     @JoinTable(
-            name = "question_to_category",
+            name = "extracted_question_category",
             joinColumns = @JoinColumn(name = "question_id"),
             inverseJoinColumns = @JoinColumn(name = "category_id")
     )

@@ -29,6 +29,10 @@ public class InterviewJobScheduler {
     // 启动时判断是否在窗口期，如果是则执行一次
     @PostConstruct
     public void checkStartupWindow() {
+        // 测试时强制开启窗口
+        processingService.startWindow();
+
+
         LocalTime now = LocalTime.now();
         LocalTime start = LocalTime.of(0, 30);
         LocalTime end = LocalTime.of(8, 0);

@@ -1,6 +1,6 @@
 package com.interviewradar.model.entity;
 
-import com.interviewradar.model.ReviewStatus;
+import com.interviewradar.model.enums.ReviewStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

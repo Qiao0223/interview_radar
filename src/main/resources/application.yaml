@@ -19,14 +19,14 @@ langchain4j:
         chat-model:
             timeout: 600s
 #           deepseek
-            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
-            base-url: https://api.deepseek.com/v1
-            model-name: deepseek-reasoner
+#            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+#            base-url: https://api.deepseek.com/v1
+#            model-name: deepseek-reasoner
 
 #           aliyun
-#            api-key: sk-c8537643758b4d8da98f06a99dc603d9
-#            base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-#            model-name: qwen-plus
+            api-key: sk-c8537643758b4d8da98f06a99dc603d9
+            base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+            model-name: qwen-plus
 
 
 aliyun:
@@ -40,12 +40,12 @@ crawler:
     delay-ms: 5000
 
 classification:
-    batch-size: 10
+    batch-size: 50
 
 threadpool:
-    core-size: 200
-    max-size: 200
-    queue-capacity: 1000
+    core-size: 5
+    max-size: 5
+    queue-capacity: 10000
 
 
 milvus:

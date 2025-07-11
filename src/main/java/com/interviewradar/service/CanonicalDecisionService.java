@@ -7,7 +7,7 @@ import com.interviewradar.common.Utils;
 import com.interviewradar.model.dto.CanonicalQuestionCandidateDTO;
 import com.interviewradar.model.entity.CanonicalQuestionEntity;
 import com.interviewradar.model.entity.ExtractedQuestionEntity;
-import com.interviewradar.model.ReviewStatus;
+import com.interviewradar.model.enums.ReviewStatus;
 import com.interviewradar.model.repository.CanonicalQuestionRepository;
 import com.interviewradar.model.repository.ExtractedQuestionRepository;
 import dev.langchain4j.model.chat.ChatModel;
@@ -15,17 +15,13 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.highlevel.dml.InsertRowsParam;
 import lombok.Data;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Service to decide whether to reuse, skip, or create a new canonical question.
@@ -88,7 +84,6 @@ public class CanonicalDecisionService {
         // persist new canonical question
         CanonicalQuestionEntity cq = CanonicalQuestionEntity.builder()
                 .text(newText)
-                .category(extracted.getCategories().iterator().next())
                 .status(ReviewStatus.PENDING)
                 .count(1)
                 .createdBy("system")
@@ -112,7 +107,6 @@ public class CanonicalDecisionService {
         }
         row.add("question_embedding", arr);
 
-        row.addProperty("category_id", cq.getCategory().getId());
         row.addProperty("status", cq.getStatus().ordinal());
 
 // 3. 包装成 List<JsonObject>

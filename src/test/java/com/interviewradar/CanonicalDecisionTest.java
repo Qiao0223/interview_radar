@@ -3,6 +3,7 @@ package com.interviewradar;
 import com.interviewradar.model.entity.CanonicalQuestionEntity;
 import com.interviewradar.model.entity.ExtractedQuestionEntity;
 import com.interviewradar.model.entity.CategoryEntity;
+import com.interviewradar.model.enums.ReviewStatus;
 import com.interviewradar.model.repository.CanonicalQuestionRepository;
 import com.interviewradar.model.repository.ExtractedQuestionRepository;
 import com.interviewradar.service.CanonicalDecisionService;
@@ -13,9 +14,6 @@ import io.milvus.param.highlevel.dml.InsertRowsParam;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
@@ -71,12 +69,11 @@ class CanonicalDecisionTest {
         // 2. 准备一条候选标准问法并 Upsert 到 Milvus
         CanonicalQuestionEntity canonical = CanonicalQuestionEntity.builder()
                 .text("标准化问法")
-                .status(com.interviewradar.model.ReviewStatus.APPROVED)
+                .status(ReviewStatus.APPROVED)
                 .count(1)
                 .createdBy("init")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .category(cat)
                 .build();
         canonical = canonicalRepo.save(canonical);
 
@@ -106,21 +103,4 @@ class CanonicalDecisionTest {
                 .extracting(CanonicalQuestionEntity::getId)
                 .contains(canonical.getId());
     }
-
-//    @TestConfiguration
-//    static class ChatModelStubConfig {
-//        @Bean
-//        @Primary
-//        public dev.langchain4j.model.chat.ChatModel chatModelStub() {
-//            return prompt -> {
-//                // 简单判断 Prompt 内容，返回复用决策 JSON
-//                if (prompt.contains("给定原始问题")) {
-//                    // 从 JSON 中提取第一候选 id
-//                    String idStr = prompt.replaceAll("(?s).*\(id=(\\d+)\\).*", "$1");
-//                    return String.format("{\"action\":\"REUSE\",\"chosenId\":%s}", idStr);
-//                }
-//                return "{\"action\":\"SKIP\"}";
-//            };
-//        }
-//    }
 }
