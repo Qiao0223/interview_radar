@@ -19,19 +19,19 @@ langchain4j:
         chat-model:
             timeout: 600s
 #           deepseek
-            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
-            base-url: https://api.deepseek.com/v1
-            model-name: deepseek-chat
+#            api-key: 
+#            base-url: https://api.deepseek.com/v1
+#            model-name: deepseek-reasoner
 
 #           aliyun
-#            api-key: sk-c8537643758b4d8da98f06a99dc603d9
-#            base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-#            model-name: qwen-plus
+            api-key: 
+            base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+            model-name: qwen-plus
 
 
 aliyun:
     embedding:
-        api-key: sk-c8537643758b4d8da98f06a99dc603d9
+        api-key: 
         base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
         model: text-embedding-v4
         dimension: 1024
