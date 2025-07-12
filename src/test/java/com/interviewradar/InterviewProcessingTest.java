@@ -1,9 +1,9 @@
 package com.interviewradar;
 
-import com.interviewradar.model.entity.InterviewEntity;
-import com.interviewradar.model.repository.ExtractedQuestionRepository;
-import com.interviewradar.model.repository.InterviewRepository;
-import com.interviewradar.service.InterviewProcessingService;
+import com.interviewradar.model.entity.RawInterview;
+import com.interviewradar.model.repository.RawQuestionRepository;
+import com.interviewradar.model.repository.RawInterviewRepository;
+import com.interviewradar.service.RawInterviewProcessingService;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,13 +25,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InterviewProcessingTest {
 
     @Autowired
-    private InterviewProcessingService processingService;
+    private RawInterviewProcessingService processingService;
 
     @Autowired
-    private InterviewRepository interviewRepo;
+    private RawInterviewRepository interviewRepo;
 
     @Autowired
-    private ExtractedQuestionRepository questionRepo;
+    private RawQuestionRepository questionRepo;
 
     private Set<Long> pendingIds;
 
@@ -39,8 +39,8 @@ class InterviewProcessingTest {
     void setUp() {
         // 取出所有待处理面经的 ID
         pendingIds = interviewRepo.findAll().stream()
-                .filter(iv -> !iv.isQuestionsExtracted())
-                .map(InterviewEntity::getContentId)
+                .filter(iv -> !iv.getQuestionsExtracted())
+                .map(RawInterview::getId)
                 .collect(Collectors.toSet());
     }
 
@@ -54,18 +54,11 @@ class InterviewProcessingTest {
                 .atMost(Duration.ofMinutes(20))
                 .pollInterval(Duration.ofSeconds(10))
                 .untilAsserted(() -> {
-                    List<InterviewEntity> remaining = interviewRepo.findAll().stream()
-                            .filter(iv -> pendingIds.contains(iv.getContentId()) && !iv.isQuestionsExtracted())
+                    List<RawInterview> remaining = interviewRepo.findAll().stream()
+                            .filter(iv -> pendingIds.contains(iv.getId()) && !iv.getQuestionsExtracted())
                             .collect(Collectors.toList());
                     assertThat(remaining).isEmpty();
                 });
-
-        // 验证每条面经已生成问题并分类完毕
-//        for (Long id : pendingIds) {
-//            List<QuestionEntity> qs = questionRepo.findByInterviewId(id);
-//            assertThat(qs).isNotEmpty();
-//            assertThat(qs).allMatch(QuestionEntity::isClassified);
-//        }
     }
 
     @Test
@@ -78,7 +71,7 @@ class InterviewProcessingTest {
 
         // 确认状态未变化
         interviewRepo.findAll().stream()
-                .filter(iv -> pendingIds.contains(iv.getContentId()))
-                .forEach(iv -> assertThat(iv.isQuestionsExtracted()).isFalse());
+                .filter(iv -> pendingIds.contains(iv.getId()))
+                .forEach(iv -> assertThat(iv.getQuestionsExtracted()).isFalse());
     }
 }

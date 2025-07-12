@@ -28,10 +28,6 @@ public class AliyunEmbeddingService implements EmbeddingModel {
         return resp.content().vector();
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    // EmbeddingModel 接口实现
-    // ──────────────────────────────────────────────────────────────────────────────
-
     @Override
     public Response<Embedding> embed(String text) {
         return delegate.embed(text);
@@ -46,9 +42,4 @@ public class AliyunEmbeddingService implements EmbeddingModel {
     public Response<List<Embedding>> embedAll(List<TextSegment> segments) {
         return delegate.embedAll(segments);
     }
-
-//    @Override
-//    public int dimension() {
-//        return dimension;
-//    }
 }

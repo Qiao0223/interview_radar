@@ -1,6 +1,6 @@
 package com.interviewradar.scheduler;
 
-import com.interviewradar.service.InterviewProcessingService;
+import com.interviewradar.service.RawInterviewProcessingService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,7 +12,7 @@ import java.time.LocalTime;
 public class InterviewJobScheduler {
 
     @Autowired
-    private InterviewProcessingService processingService;
+    private RawInterviewProcessingService processingService;
 
     // 每天 00:30 执行一次，开启窗口
     @Scheduled(cron = "0 30 0 * * *")

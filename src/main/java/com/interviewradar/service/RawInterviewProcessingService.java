@@ -1,44 +1,30 @@
 package com.interviewradar.service;
 
-import com.interviewradar.model.entity.InterviewEntity;
-import com.interviewradar.model.entity.ExtractedQuestionEntity;
-import com.interviewradar.model.repository.ExtractedQuestionRepository;
-import com.interviewradar.model.repository.InterviewRepository;
-import org.springframework.beans.factory.annotation.Qualifier;
+import com.interviewradar.model.entity.RawInterview;
+import com.interviewradar.model.entity.RawQuestion;
+import com.interviewradar.model.repository.RawQuestionRepository;
+import com.interviewradar.model.repository.RawInterviewRepository;
+import lombok.Data;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
+@Data
 @Service
-public class InterviewProcessingService {
+public class RawInterviewProcessingService {
 
     private final ThreadPoolTaskExecutor taskExecutor;
-    private final InterviewRepository interviewRepo;
-    private final ExtractedQuestionRepository questionRepo;
-    private final QuestionExtractionService extractionService;
-    private final ClassificationService classificationService;
+    private final RawInterviewRepository interviewRepo;
+    private final RawQuestionRepository questionRepo;
+    private final RawQuestionExtractionService extractionService;
+    private final RawQuestionClassificationService classificationService;
     private final AtomicBoolean windowOpen = new AtomicBoolean(false);
 
     private final AtomicBoolean extractionStarted = new AtomicBoolean(false);
     private final AtomicBoolean classificationStarted = new AtomicBoolean(false);
-
-    public InterviewProcessingService(
-            @Qualifier("taskExecutor") ThreadPoolTaskExecutor taskExecutor,
-            InterviewRepository interviewRepo,
-            ExtractedQuestionRepository questionRepo,
-            QuestionExtractionService extractionService,
-            ClassificationService classificationService
-    ) {
-        this.taskExecutor = taskExecutor;
-        this.interviewRepo = interviewRepo;
-        this.questionRepo = questionRepo;
-        this.extractionService = extractionService;
-        this.classificationService = classificationService;
-    }
 
     public void startWindow() {
         windowOpen.set(true);
@@ -48,7 +34,7 @@ public class InterviewProcessingService {
         }
 
         // 使用 repository 查询未提取的问题
-        List<InterviewEntity> pending = interviewRepo.findByQuestionsExtractedFalse();
+        List<RawInterview> pending = interviewRepo.findByQuestionsExtractedFalse();
 
         List<CompletableFuture<Void>> extractFuts = pending.stream()
                 .map(iv -> CompletableFuture.runAsync(
@@ -74,7 +60,7 @@ public class InterviewProcessingService {
             System.out.println("[INFO] 开始分类问题任务");
         }
 
-        List<ExtractedQuestionEntity> toClassify = questionRepo.findByCategorizedFalse();
+        List<RawQuestion> toClassify = questionRepo.findByCategoriesAssignedFalse();
 
         if (toClassify.isEmpty()) return;
 

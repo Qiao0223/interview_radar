@@ -43,7 +43,7 @@ public class AliyunEmbeddingConfig {
     /**
      * Wrap it in your service with the configured dimension.
      */
-    @Bean
+    //@Bean
     public AliyunEmbeddingService aliyunEmbeddingService(EmbeddingModel aliyunEmbeddingModel) {
         return new AliyunEmbeddingService(aliyunEmbeddingModel);
     }

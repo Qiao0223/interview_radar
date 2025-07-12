@@ -5,25 +5,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewradar.common.Utils;
 import com.interviewradar.config.ClassificationProperties;
 import com.interviewradar.llm.PromptTemplate;
-import com.interviewradar.model.entity.CandidateCanonicalQuestionEntity;
-import com.interviewradar.model.entity.ExtractedQuestionEntity;
+import com.interviewradar.model.entity.RawQuestion;
+import com.interviewradar.model.entity.StandardizationCandidate;
 import com.interviewradar.model.enums.CandidateStatus;
-import com.interviewradar.model.repository.CandidateCanonicalQuestionRepository;
-import com.interviewradar.model.repository.ExtractedQuestionRepository;
+import com.interviewradar.model.repository.StandardizationCandidateRepository;
+import com.interviewradar.model.repository.RawQuestionRepository;
 import dev.langchain4j.model.chat.ChatModel;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
-import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 /**
@@ -32,35 +35,49 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-public class CanonicalizeExtractedQuestionService {
+public class RawQuestionStandardizationService {
 
     @Lazy
     @Autowired
-    private CanonicalizeExtractedQuestionService selfProxy;
+    private RawQuestionStandardizationService selfProxy;
 
-    private final ExtractedQuestionRepository extractedQuestionRepo;
-    private final CandidateCanonicalQuestionRepository candidateRepo;
+    private final RawQuestionRepository extractedQuestionRepo;
+    private final StandardizationCandidateRepository candidateRepo;
     private final ChatModel chatModel;
     private final AliyunEmbeddingService embeddingService;
     private final ObjectMapper objectMapper;
     private final ClassificationProperties props;
+    private final ThreadPoolTaskExecutor taskExecutor;
+
 
     /**
-     * 分批标准化提取的问题列表，每批独立事务
+     * 分批标准化提取的问题列表，每批独立事务，使用线程池并发执行
      */
-    public void batchStandardize(List<ExtractedQuestionEntity> questions) {
+    public void batchStandardize(List<RawQuestion> questions) {
         if (questions == null || questions.isEmpty()) {
             return;
         }
         int batchSize = props.getBatchSize();
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         for (int i = 0; i < questions.size(); i += batchSize) {
-            List<ExtractedQuestionEntity> batch = questions.subList(i, Math.min(i + batchSize, questions.size()));
-            try {
-                selfProxy.processBatch(batch);
-            } catch (Exception e) {
-                System.err.println("标准化批次失败: " + e.getMessage());
-            }
+            List<RawQuestion> batch =
+                    questions.subList(i, Math.min(i + batchSize, questions.size()));
+
+            // 并发提交到线程池，保持事务代理
+            futures.add(CompletableFuture.runAsync(() -> {
+                try {
+                    selfProxy.processBatch(batch);
+                } catch (Exception e) {
+                    System.err.println("标准化批次失败: " + e.getMessage());
+                }
+            }, taskExecutor));
         }
+
+        // 等待所有批次并发完成
+        CompletableFuture
+                .allOf(futures.toArray(new CompletableFuture[0]))
+                .join();
     }
 
     /**
@@ -68,7 +85,7 @@ public class CanonicalizeExtractedQuestionService {
      * 并在控制台显示原问题与对应的标准化结果
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processBatch(List<ExtractedQuestionEntity> batch) {
+    public void processBatch(List<RawQuestion> batch) {
         String prompt = buildBatchPrompt(batch);
         String raw = chatModel.chat(prompt);
         List<StandardItem> items = parseStandardizedItems(raw);
@@ -77,7 +94,7 @@ public class CanonicalizeExtractedQuestionService {
             int idx = item.getIndex() - 1;
             if (idx < 0 || idx >= batch.size()) continue;
 
-            ExtractedQuestionEntity src = batch.get(idx);
+            RawQuestion src = batch.get(idx);
             // 过滤空标题
             List<String> validTitles = item.getTitles().stream()
                     .filter(title -> !StringUtils.isBlank(title))
@@ -94,20 +111,21 @@ public class CanonicalizeExtractedQuestionService {
                 float[] vector = embeddingService.embedRaw(title);
                 String embeddingJson = Utils.toJsonArray(vector);
 
-                CandidateCanonicalQuestionEntity candidate = CandidateCanonicalQuestionEntity.builder()
-                        .text(title)
+                StandardizationCandidate candidate = StandardizationCandidate.builder()
+                        .candidateText(title)
                         .embedding(embeddingJson)
-                        .sourceQuestion(src)
+                        .rawQuestion(src)
                         .status(CandidateStatus.PENDING)
-                        .createdAt(LocalDateTime.now())
+                        .createdAt(Instant.now())
+                        .generatedAt(Instant.now())
                         .build();
                 candidateRepo.save(candidate);
                 added = true;
             }
 
             if (added) {
-                src.setCanonicalized(true); // 标记为已标准化
-                src.setUpdatedAt(LocalDateTime.now()); // 更新更新时间
+                src.setCandidatesGenerated(true); // 标记为已标准化
+                src.setUpdatedAt(Instant.now()); // 更新更新时间
             }
         }
 
@@ -118,7 +136,7 @@ public class CanonicalizeExtractedQuestionService {
     /**
      * 构建批量标准化 Prompt
      */
-    private String buildBatchPrompt(List<ExtractedQuestionEntity> batch) {
+    private String buildBatchPrompt(List<RawQuestion> batch) {
         // 一定要在 PromptTemplate 里先定义好这个 enum 常量！
         String template = PromptTemplate.QUESTION_STANDARDIZATION.getTemplate();
 

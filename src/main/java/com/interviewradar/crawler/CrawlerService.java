@@ -1,8 +1,8 @@
 package com.interviewradar.crawler;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.interviewradar.model.entity.InterviewEntity;
-import com.interviewradar.model.repository.InterviewRepository;
+import com.interviewradar.model.entity.RawInterview;
+import com.interviewradar.model.repository.RawInterviewRepository;
 import com.interviewradar.model.dto.RawInterviewDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ public class CrawlerService {
     private RestTemplate restTemplate;
 
     @Autowired
-    private InterviewRepository interviewRepo;
+    private RawInterviewRepository interviewRepo;
 
     /**
      * 抓取指定页的原始面经 DTO 列表
@@ -112,7 +112,7 @@ public class CrawlerService {
                 break;
             }
             for (RawInterviewDTO dto : list) {
-                if (interviewRepo.existsByContentId(dto.getContentId())) {
+                if (interviewRepo.existsById(dto.getContentId())) {
                     log.info("遇到已存在的面经 contentId={}，停止增量爬取", dto.getContentId());
                     break outer;
                 }
@@ -128,16 +128,16 @@ public class CrawlerService {
      * 去重并保存一条面经到 interviews 表
      */
     private void saveInterview(RawInterviewDTO dto) {
-        if (interviewRepo.existsByContentId(dto.getContentId())) {
-            log.debug("已存在，跳过 contentId={}", dto.getContentId());
+        if (interviewRepo.existsById(dto.getContentId())) {
+            log.debug("已存在，跳过 id={}", dto.getContentId());
             return;
         }
-        InterviewEntity iv = InterviewEntity.builder()
-                .contentId(dto.getContentId())
+        RawInterview iv = RawInterview.builder()
+                .id(dto.getContentId())
                 .title(dto.getTitle())
                 .content(dto.getContent())
-                .showTime(dto.getShowTime())
-                .fetchedAt(LocalDateTime.now())
+                .showTime(Instant.from(dto.getShowTime()))
+                .fetchedAt( Instant.now())
                 .build();
         interviewRepo.save(iv);
         log.info("已保存面经 contentId={}", dto.getContentId());

@@ -4,15 +4,16 @@
 
 ### 1.1.1. 操作
 
-- 调度器（00:30–08:00）触发 `CrawlerService.fetchAndSaveNewInterviews()`
-- 从牛客接口拉取新面经列表
+* 调度器（00:30–08:00）触发 `CrawlerService.crawlNewInterviews()`
+* 从牛客接口拉取新面经列表，支持 `contentType=74|250`
 
 ### 1.1.2. 数据库变动 (`interview`)
 
-- **插入** 新的 `interview` 记录，字段：  
-  - `content_id` ← 接口返回的 contentId  
-  - `title`、`content`、`show_time`、`fetched_at = NOW()`  
-  - `extracted = FALSE`
+* **插入** 新的 `interview` 记录，字段：
+
+  * `content_id` ← 接口返回的 contentId
+  * `title`、`content`、`show_time`、`fetched_at = NOW()`
+  * `extracted = FALSE`
 
 ---
 
@@ -20,19 +21,20 @@
 
 ### 1.2.1. 操作
 
-- 扫描 `interview` 表中所有 `extracted = FALSE` 的记录  
-- 调用 LLM 提取原始问句，生成 `extracted_question.question_text`  
-- 更新 `interview.extracted = TRUE`
+* 扫描 `interview` 表中所有 `extracted = FALSE` 的记录
+* 调用 LLM（`PromptTemplate.QUESTION_EXTRACTION`）提取原始问句
+* 更新 `interview.extracted = TRUE`
 
-### 1.2.2. 数据库变动 (`extracted_question`)
+### 1.2.2. 数据库变动 (`raw_question`)
 
-- **插入** 新条目，字段：  
-  - `interview_id`  
-  - `question_text`  
-  - `canonicalized = FALSE`  
-  - `categorized = FALSE`  
-  - `created_at = NOW()`  
-  - `updated_at = NOW()`
+* **插入** 新条目，字段：
+
+  * `interview_id`
+  * `question_text`
+  * `canonicalized = FALSE`
+  * `categorized = FALSE`
+  * `created_at = NOW()`
+  * `updated_at = NOW()`
 
 ---
 
@@ -40,139 +42,101 @@
 
 ### 1.3.1. 操作
 
-- 扫描所有 `extracted_question` 中 `categorized = FALSE` 的记录  
-- 从 `category` 表加载所有大类标签  
-- 调用 LLM 对 `extracted_question.question_text` 进行分类
+* 扫描 `raw_question` 表中所有 `categorized = FALSE` 的记录
+* 从 `category` 表加载所有大类标签
+* 调用 LLM（`PromptTemplate.QUESTION_CLASSIFICATION`）进行批量分类
 
 ### 1.3.2. 数据库变动
 
-- **更新** `extracted_question`：  
-  - `categorized = TRUE`  
-  - `updated_at = NOW()`  
-- **插入** 映射 (`question_to_category`)：  
-  - `(question_id, category_id, mapped_at = NOW())`
+* **更新** `raw_question`：
 
-> *本阶段仅修改关系库，不涉及向量库。*
+  * `categorized = TRUE`
+  * `updated_at = NOW()`
+* **插入** 映射 (`raw_question_category`)：
+
+  * `(question_id, category_id, mapped_at = NOW())`
 
 ---
 
-## 1.4. 向量化 & 候选召回
+## 1.4. 标准化候选生成
 
 ### 1.4.1. 操作
 
-- 对所有已分类 (`categorized = TRUE`) 且在 `question_to_category` 中存在有效映射的 `extracted_question`  
-- 调用 `EmbeddingService.embed(extracted_question.question_text)` → `question_embedding`  
-- 在 Milvus 的 `canonical_question` Collection 上以 `category_id == X` 过滤做 Top-K 检索，返回候选
+* 扫描 `raw_question` 表中所有 `canonicalized = FALSE` 且 `categorized = TRUE` 的记录
+* 批量调用 LLM（`PromptTemplate.QUESTION_STANDARDIZATION`）生成候选标准问法列表
+* 提取 LLM 返回的 JSON，得到每条原始问题对应的一个或多个 `titles`
 
-> *本阶段仅触发向量库的检索，关系库无变动。*
+### 1.4.2. 数据库变动 (`candidate_standard`)
+
+* **插入** 候选：
+
+  * `text` ← 标准化标题
+  * `embedding` ← `EmbeddingService.embedRaw(text)`→JSON
+  * `source_question_id` ← 原始问题 ID
+  * `matched_standard_id = NULL`
+  * `status = PENDING`
+  * `created_at = NOW()`
+* **更新** 原始问题：
+
+  * `canonicalized = TRUE`
+  * `updated_at = NOW()`
 
 ---
 
-## 1.5. 标准化问法精判
+## 1.5. 向量检索 & 精判
 
 ### 1.5.1. 操作
 
-- 从检索结果中取回候选 `(id, text, status, score)`  
-- 拼装 Prompt，让 LLM 在以下三种操作中决策（若有 `status = REJECTED`，带上对应的 `review_comment`）：
-  1. **复用**：选中某个 `status ∈ {PENDING, APPROVED}`  
-  2. **跳过**：Top-1 为 `REJECTED`  
-  3. **新建**：所有候选均不合适
+* 扫描所有 `candidate_standard` 中 `status = PENDING` 的记录
+* 对每条候选：
+
+  1. **向量检索**：全库 Top-K 检索 `standard_question` Collection；
+
+    * 参数：`topK`, `MetricType.L2`, 距离阈值 `≤ threshold`
+  2. **构建 Prompt**：列出 `APPROVED, PENDING, REJECTED` 状态的 Top-K 候选及分数
+  3. **调用 LLM**：返回 `{"action":"REUSE|CREATE|SKIP","chosenId"?:id}`
 
 ### 1.5.2. 数据库变动
 
-#### 1.5.2.1 复用分支
+| Action     | 操作内容                                                                                                                                                   | `candidate_standard.status` |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| **REUSE**  | 1. `standard_question.count++`, `updated_at = NOW()`  <br> 2. 若原标准为 PENDING，则插入缺失 `standard_question_category` 映射  <br> 3. 插入 `raw_to_standard_map` 映射 | `MERGED` → `UNDER_REVIEW`   |
+| **CREATE** | 1. 新建 `standard_question` (text, status=PENDING, count=1, createdBy=system, timestamps)  <br> 2. Milvus 插入新向量  <br> 3. 插入 `raw_to_standard_map` 映射     | `PROMOTED` → `UNDER_REVIEW` |
+| **SKIP**   | 1. 标记 `candidate_standard.status = SKIPPED`  <br> 2. （可选）不插入映射                                                                                         | `SKIPPED` → `UNDER_REVIEW`  |
 
-- **更新** `canonical_question`：  
-  - `count = count + 1`  
-  - `updated_at = NOW()`  
-- **插入** 映射 (`extracted_question_canonical`)：  
-  - `(extracted_question_id, canonical_question_id, mapped_at = NOW())`  
-- **更新** `extracted_question`：  
-  - `canonicalized = TRUE`  
-  - `updated_at = NOW()`
+* **日志**：每次调用 LLM 前后写入 `prompt_log`：
 
-#### 1.5.2.2 跳过分支
-
-- **无** 关系库变动  
-- 保持 `extracted_question.canonicalized = FALSE`
-
-#### 1.5.2.3 新建分支
-
-- **插入** 新 `canonical_question`：  
-  - `text` ← LLM 生成的标准化问法  
-  - `category_id` ← 原始 `extracted_question` 对应 `category_id`  
-  - `status = 'PENDING'`  
-  - `count = 1`  
-  - `created_by`、`created_at = NOW()`  
-- **调用** `EmbeddingService.embed(canonical_question.text)` → `canonical_question_embedding`  
-- **Upsert** 到 Milvus 的 `canonical_question` Collection：  
-  ```text
-  milvus.upsert("canonical_question", {
-    id: canonical_question.id,
-    text: canonical_question.text,
-    question_embedding: canonical_question_embedding,
-    category_id: canonical_question.category_id,
-    status: status_code
-  })
-  ```  
-- **插入** 映射 (`extracted_question_canonical`)：  
-  - `(extracted_question_id, canonical_question_id, mapped_at = NOW())`  
-- **更新** `extracted_question`：  
-  - `canonicalized = TRUE`  
-  - `updated_at = NOW()`
+  * `candidate_id, prompt_text, raw_output, timestamp`
 
 ---
 
-## 1.6. 知识点映射
+## 1.6. 人工审核
 
-### 1.6.1. 操作
+### 1.6.1. 审核视图
 
-- 针对所有 `canonical_question` 中 `status ∈ {PENDING, APPROVED}` 且 **未映射** 的记录  
-- 调用 LLM 从 `canonical_question.text` 生成零或多个知识点 `topic.name` 和可选 `topic.description`
+* 查询所有 `candidate_standard.status = UNDER_REVIEW`
+* 展示：原文、LLM Prompt & 输出、候选状态、映射详情
 
-### 1.6.2. 数据库变动
+### 1.6.2. 审核操作
 
-#### 1.6.2.1 复用分支
+* **Approve**：`candidate_standard.status = APPROVED`
+* **Reject**：`candidate_standard.status = REJECTED`
+* **插入** `entity_review_log`：
 
-- **更新** `topic`：  
-  - `occurrence_count = occurrence_count + canonical_question.count`  
-  - `updated_at = NOW()`  
-- **插入** 映射 (`canonical_question_topic`)：  
-  - `(canonical_question_id, topic_id, mapped_at = NOW())`  
-- **更新** `canonical_question`：  
-  - `topic_mapping_status = 'MAPPED'`  
-  - `updated_at = NOW()`
-
-#### 1.6.2.2 新建分支
-
-- **插入** 新 `topic`：  
-  - `name` ← LLM 生成  
-  - `description` ← LLM 生成或留空  
-  - `category_id` ← 对应大类  
-  - `status = 'PENDING'`  
-  - `occurrence_count = 1`  
-  - `created_by`、`created_at = NOW()`  
-- **插入** 映射 (`canonical_question_topic`)：  
-  - `(canonical_question_id, topic_id, mapped_at = NOW())`  
-- **调用** `EmbeddingService.embed(...)` 对 `topic.description` 按段切片  
-- **Upsert** 每段到 Milvus 的 `topic_chunk` Collection  
-- **更新** `topic_mapping_status = 'MAPPED'`
+  * `entity_type = "CANDIDATE"`, `entity_id`, `action`, `reviewer`, `review_comment`, `action_time`
 
 ---
 
-## 1.7. 审核与回流
+## 1.7. 配置 & 可追溯性
 
-- 在后台 UI 人工审核所有 `canonical_question.status = 'PENDING'` 和 `topic.status = 'PENDING'`  
-- **审核通过**：  
-  - **更新** 对象状态 → `status = 'APPROVED'`、`reviewed_by`、`reviewed_at = NOW()`  
-  - **批量 Upsert** 已批准的 `canonical_question` 到 Milvus  
-  - **批量 Upsert** 已批准的 `topic_chunk` 到 Milvus  
-- **审核驳回**：  
-  - **更新** `status = 'REJECTED'`、填写 `review_comment`  
-  - 若驳回的是标准化问法，则后续同义抽取 Prompt 中提示“请避免重复此问题”  
-  - 若驳回的是知识点，则对应 `canonical_question.topic_mapping_status = 'UNMAPPED'`，重新进入知识点映射流程
+* **阈值**：`similarity.threshold`（向量距离）
+* **批量大小**：`classification.batch-size`, `standardization.batch-size`
+* **日志**：`prompt_log` 保存 LLM 交互，`entity_review_log` 保存审核记录
 
 ---
+
+> **备注**：该文档可直接作为 LLM Prompt 或系统设计文档，下次对话请按此流程构建。
+
 
 # 2. 关系数据库表设计
 

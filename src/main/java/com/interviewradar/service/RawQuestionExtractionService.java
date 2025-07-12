@@ -2,17 +2,19 @@ package com.interviewradar.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.interviewradar.model.entity.InterviewEntity;
-import com.interviewradar.model.entity.ExtractedQuestionEntity;
-import com.interviewradar.model.repository.ExtractedQuestionRepository;
-import com.interviewradar.model.repository.InterviewRepository;
+import com.interviewradar.model.entity.RawInterview;
+import com.interviewradar.model.entity.RawQuestion;
+import com.interviewradar.model.repository.RawQuestionRepository;
+import com.interviewradar.model.repository.RawInterviewRepository;
 import com.interviewradar.llm.PromptTemplate;
 import dev.langchain4j.model.chat.ChatModel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,25 +24,18 @@ import static com.interviewradar.common.Utils.extractJson;
 /**
  * 基于大语言模型（LLM）从原始面经中抽取面试题目的服务类
  */
+@RequiredArgsConstructor
 @Service
-public class QuestionExtractionService {
+public class RawQuestionExtractionService {
 
     @Lazy
     @Autowired
-    private QuestionExtractionService selfProxy;
+    private RawQuestionExtractionService selfProxy;
 
     private final ChatModel chatModel; // LangChain4j Chat model
-    private final ExtractedQuestionRepository questionRepo; // 问题存储仓库
-    private final InterviewRepository interviewRepo; // 面经存储仓库
+    private final RawQuestionRepository questionRepo; // 问题存储仓库
+    private final RawInterviewRepository interviewRepo; // 面经存储仓库
     private final ObjectMapper mapper = new ObjectMapper(); // 用于解析 JSON
-
-    public QuestionExtractionService(ChatModel chatModel,
-                                     ExtractedQuestionRepository questionRepo,
-                                     InterviewRepository interviewRepo) {
-        this.chatModel = chatModel;
-        this.questionRepo = questionRepo;
-        this.interviewRepo  = interviewRepo;
-    }
 
     /**
      * 从原始面经内容中提取问题文本列表
@@ -89,21 +84,21 @@ public class QuestionExtractionService {
     public void extractAndSave(Long interviewId, String rawInterview) {
         try {
             // 标记为已提取
-            InterviewEntity interview = interviewRepo.getReferenceById(interviewId);
+            RawInterview interview = interviewRepo.getReferenceById(interviewId);
             interview.setQuestionsExtracted(true);
             interviewRepo.save(interview);
             // 提取问题
             List<String> questions = extractQuestions(rawInterview);
-            List<ExtractedQuestionEntity> entities = new ArrayList<>();
+            List<RawQuestion> entities = new ArrayList<>();
             LocalDateTime now = LocalDateTime.now();
             for (String q : questions) {
-                ExtractedQuestionEntity qe = ExtractedQuestionEntity.builder()
+                RawQuestion qe = RawQuestion.builder()
                         .interview(interview)
                         .questionText(q)
-                        .canonicalized(false)
-                        .categorized(false)
-                        .createdAt(now)
-                        .updatedAt(now)
+                        .candidatesGenerated(false)
+                        .categoriesAssigned(false)
+                        .createdAt( Instant.now())
+                        .updatedAt( Instant.now())
                         .build();
                 entities.add(qe);
             }
@@ -118,18 +113,7 @@ public class QuestionExtractionService {
     /**
      * 重载方法：从 InterviewEntity 中提取并保存问题
      */
-    public void extractAndSave(InterviewEntity interview) {
-        selfProxy.extractAndSave(interview.getContentId(), interview.getContent());
-    }
-
-    /**
-     * 批量提取：输入多个 InterviewEntity，逐条调用 LLM 提取并保存
-     * @param interviews 面经实体列表
-     */
-    public void extractAndSave(List<InterviewEntity> interviews) {
-        for (InterviewEntity interview : interviews) {
-            // 逐条提取，确保每次调用都走事务代理
-            selfProxy.extractAndSave(interview);
-        }
+    public void extractAndSave(RawInterview interview) {
+        selfProxy.extractAndSave(interview.getId(), interview.getContent());
     }
 }

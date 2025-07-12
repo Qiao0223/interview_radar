@@ -12,7 +12,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @EnableScheduling       // 开启 @Scheduled 支持
 public class AsyncConfig {
 
-    @Bean(name = "taskExecutor")
+    @Bean(name = "llmTaskExecutor")
     public ThreadPoolTaskExecutor taskExecutor(
             @Value("${threadpool.core-size:5}") int coreSize,
             @Value("${threadpool.max-size:10}") int maxSize,

@@ -1,7 +1,7 @@
 package com.interviewradar;
 
 import com.interviewradar.crawler.CrawlerService;
-import com.interviewradar.model.repository.InterviewRepository;
+import com.interviewradar.model.repository.RawInterviewRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,7 +16,7 @@ class CrawlerTests {
     private CrawlerService crawler;
 
     @Autowired
-    private InterviewRepository interviewRepo;
+    private RawInterviewRepository interviewRepo;
 
 
     @Test

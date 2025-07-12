@@ -1,10 +1,10 @@
 package com.interviewradar;
 
-import com.interviewradar.model.entity.InterviewEntity;
-import com.interviewradar.model.repository.ExtractedQuestionRepository;
-import com.interviewradar.model.repository.InterviewRepository;
+import com.interviewradar.model.entity.RawInterview;
+import com.interviewradar.model.repository.RawQuestionRepository;
+import com.interviewradar.model.repository.RawInterviewRepository;
 import dev.langchain4j.model.chat.ChatModel;
-import com.interviewradar.service.QuestionExtractionService;
+import com.interviewradar.service.RawQuestionExtractionService;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
@@ -16,16 +16,16 @@ import java.util.List;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class QuestionExtractionTests {
+public class RawQuestionExtractionTests {
 
     @Autowired
-    QuestionExtractionService service;
+    RawQuestionExtractionService service;
     @Autowired
     ChatModel chatModel;
     @Autowired
-    InterviewRepository interviewRepo;
+    RawInterviewRepository interviewRepo;
     @Autowired
-    ExtractedQuestionRepository qRepo;
+    RawQuestionRepository qRepo;
 
     @Test
     public void llmGenerateCanBeCalled() throws Exception {
@@ -58,7 +58,7 @@ public class QuestionExtractionTests {
 
     @Test
     public void extractAndSaveQuestions() throws Exception {
-        InterviewEntity interview = interviewRepo.findAll().stream()
+        RawInterview interview = interviewRepo.findAll().stream()
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("数据库中无 InterviewEntity 数据"));
         service.extractAndSave(interview);
