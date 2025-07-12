@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.IntStream;
+import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 /**
@@ -117,13 +119,17 @@ public class CanonicalizeExtractedQuestionService {
      * 构建批量标准化 Prompt
      */
     private String buildBatchPrompt(List<ExtractedQuestionEntity> batch) {
+        // 一定要在 PromptTemplate 里先定义好这个 enum 常量！
         String template = PromptTemplate.QUESTION_STANDARDIZATION.getTemplate();
-        String questions = batch.stream()
-                .map(ExtractedQuestionEntity::getQuestionText)
+
+        // 用 IntStream 搭配 Collectors 拼出带序号的整块问题文本
+        String questionsBlock = IntStream.range(0, batch.size())
+                .mapToObj(i -> (i + 1) + ". " + batch.get(i).getQuestionText())
                 .collect(Collectors.joining("\n"));
+
         return template
                 .replace("${n}", String.valueOf(batch.size()))
-                .replace("${questions}", questions);
+                .replace("${questions}", questionsBlock);
     }
 
     /**

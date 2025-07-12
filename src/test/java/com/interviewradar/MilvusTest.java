@@ -13,7 +13,7 @@ public class MilvusTest {
     public void testConnectionSuccessful() {
         MilvusServiceClient client = new MilvusServiceClient(
                 ConnectParam.newBuilder()
-                        .withHost("192.168.81.131")
+                        .withHost("115.190.83.184")
                         .withPort(19530)
                         .build()
         );

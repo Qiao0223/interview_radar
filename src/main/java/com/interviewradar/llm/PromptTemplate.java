@@ -160,12 +160,9 @@ N.{questionTextN}
               {"index":20, "titles":["内存受限场景下大规模数据排序实现"]},
               {"index":21, "titles":["TCP 第四次挥手的必要性", "TCP 中等待 2MSL 的原因"]}
             ]
-            请根据上述规则，对下面的面试原问题列表进行标准化处理，并严格使用 JSON 格式返回结果。
+            请根据上述规则，对下面的${n}道面试原问题列表进行标准化处理，并严格使用 JSON 格式返回结果。
             面试原问题列表：
-            1. ${questionText1}
-            2. ${questionText2}
-            ...
-            N. ${questionTextN}
+            ${questions}
     """),
 
 
