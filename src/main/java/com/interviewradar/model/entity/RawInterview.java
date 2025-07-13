@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
@@ -27,11 +27,11 @@ public class RawInterview {
     private String content;
 
     @Column(name = "show_time")
-    private Instant showTime;
+    private LocalDateTime showTime;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "fetched_at", nullable = false)
-    private Instant fetchedAt;
+    private LocalDateTime fetchedAt;
 
     @ColumnDefault("0")
     @Column(name = "questions_extracted", nullable = false)

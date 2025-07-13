@@ -14,8 +14,10 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -97,8 +99,8 @@ public class RawQuestionExtractionService {
                         .questionText(q)
                         .candidatesGenerated(false)
                         .categoriesAssigned(false)
-                        .createdAt( Instant.now())
-                        .updatedAt( Instant.now())
+                        .createdAt( LocalDateTime.now())
+                        .updatedAt( LocalDateTime.now())
                         .build();
                 entities.add(qe);
             }

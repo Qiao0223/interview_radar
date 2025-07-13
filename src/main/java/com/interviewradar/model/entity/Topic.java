@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
@@ -47,13 +47,13 @@ public class Topic {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "reviewed_by", length = 50)
     private String reviewedBy;
 
     @Column(name = "reviewed_at")
-    private Instant reviewedAt;
+    private LocalDateTime reviewedAt;
 
      
     @Column(name = "review_comment")
@@ -61,6 +61,6 @@ public class Topic {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
 }

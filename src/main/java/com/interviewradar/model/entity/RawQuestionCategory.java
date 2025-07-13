@@ -6,7 +6,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
@@ -37,6 +37,6 @@ public class RawQuestionCategory {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "assigned_at", nullable = false)
-    private Instant assignedAt;
+    private LocalDateTime assignedAt;
 
 }

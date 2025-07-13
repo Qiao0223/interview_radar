@@ -14,5 +14,4 @@ public class InterviewRadarApplication {
     public static void main(String[] args) {
         SpringApplication.run(InterviewRadarApplication.class, args);
     }
-
 }

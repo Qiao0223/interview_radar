@@ -6,7 +6,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
@@ -37,6 +37,6 @@ public class RawToStandardMap {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "mapped_at", nullable = false)
-    private Instant mappedAt;
+    private LocalDateTime mappedAt;
 
 }

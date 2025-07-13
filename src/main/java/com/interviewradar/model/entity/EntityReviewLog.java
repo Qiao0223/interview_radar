@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Builder
 @AllArgsConstructor
@@ -41,6 +41,6 @@ public class EntityReviewLog {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "action_time", nullable = false)
-    private Instant actionTime;
+    private LocalDateTime actionTime;
 
 }

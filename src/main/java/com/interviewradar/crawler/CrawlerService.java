@@ -11,9 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Instant;
+import java.time.*;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -92,7 +91,9 @@ public class CrawlerService {
 
     // 工具方法，把毫秒转成 LocalDateTime
     private LocalDateTime toLocalDateTime(long ms) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(ms), ZoneId.systemDefault());
+        return Instant.ofEpochMilli(ms)
+                .atZone(ZoneId.of("Asia/Shanghai"))
+                .toLocalDateTime();
     }
 
     private LocalDateTime toLocalDateTimeOrNull(long ms) {
@@ -136,8 +137,8 @@ public class CrawlerService {
                 .id(dto.getContentId())
                 .title(dto.getTitle())
                 .content(dto.getContent())
-                .showTime(Instant.from(dto.getShowTime()))
-                .fetchedAt( Instant.now())
+                .showTime(LocalDateTime.from(dto.getShowTime()))
+                .fetchedAt( LocalDateTime.now())
                 .build();
         interviewRepo.save(iv);
         log.info("已保存面经 contentId={}", dto.getContentId());

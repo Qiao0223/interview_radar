@@ -21,8 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -116,8 +118,8 @@ public class RawQuestionStandardizationService {
                         .embedding(embeddingJson)
                         .rawQuestion(src)
                         .status(CandidateStatus.PENDING)
-                        .createdAt(Instant.now())
-                        .generatedAt(Instant.now())
+                        .createdAt(LocalDateTime.now())
+                        .generatedAt(LocalDateTime.now())
                         .build();
                 candidateRepo.save(candidate);
                 added = true;
@@ -125,7 +127,7 @@ public class RawQuestionStandardizationService {
 
             if (added) {
                 src.setCandidatesGenerated(true); // 标记为已标准化
-                src.setUpdatedAt(Instant.now()); // 更新更新时间
+                src.setUpdatedAt(LocalDateTime.now()); // 更新更新时间
             }
         }
 

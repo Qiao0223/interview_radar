@@ -7,7 +7,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Builder
@@ -41,13 +41,13 @@ public class StandardQuestion {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "reviewer", length = 50)
     private String reviewer;
 
     @Column(name = "reviewed_at")
-    private Instant reviewedAt;
+    private LocalDateTime reviewedAt;
 
      
     @Column(name = "review_notes")
@@ -55,7 +55,7 @@ public class StandardQuestion {
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    private LocalDateTime updatedAt;
 
     @Column(name = "embedding", nullable = false)
     @JdbcTypeCode(SqlTypes.JSON)
