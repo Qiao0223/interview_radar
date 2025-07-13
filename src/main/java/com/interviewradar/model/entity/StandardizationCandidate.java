@@ -53,7 +53,7 @@ public class StandardizationCandidate {
     private LocalDateTime createdAt;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "generated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime generatedAt;
 
 }

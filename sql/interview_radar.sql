@@ -11,77 +11,11 @@
  Target Server Version : 80042 (8.0.42)
  File Encoding         : 65001
 
- Date: 12/07/2025 20:37:45
+ Date: 13/07/2025 14:34:59
 */
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
-
--- ----------------------------
--- Table structure for candidate_canonical_question
--- ----------------------------
-DROP TABLE IF EXISTS `candidate_canonical_question`;
-CREATE TABLE `candidate_canonical_question`  (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `text` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-  `embedding` json NULL,
-  `source_question_id` bigint NOT NULL,
-  `matched_canonical_id` bigint NULL DEFAULT NULL,
-  `status` enum('PENDING','MERGED','PROMOTED') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NULL DEFAULT 'PENDING',
-  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `source_question_id`(`source_question_id` ASC) USING BTREE,
-  INDEX `matched_canonical_id`(`matched_canonical_id` ASC) USING BTREE,
-  CONSTRAINT `candidate_canonical_question_ibfk_1` FOREIGN KEY (`source_question_id`) REFERENCES `extracted_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `candidate_canonical_question_ibfk_2` FOREIGN KEY (`matched_canonical_id`) REFERENCES `canonical_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 391 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for canonical_question
--- ----------------------------
-DROP TABLE IF EXISTS `canonical_question`;
-CREATE TABLE `canonical_question`  (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `status` enum('PENDING','APPROVED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'PENDING',
-  `count` int NOT NULL DEFAULT 1,
-  `created_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `reviewed_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
-  `reviewed_at` datetime NULL DEFAULT NULL,
-  `review_comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
-  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `embedding` json NULL,
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for canonical_question_category
--- ----------------------------
-DROP TABLE IF EXISTS `canonical_question_category`;
-CREATE TABLE `canonical_question_category`  (
-  `canonical_question_id` bigint NOT NULL,
-  `category_id` bigint NOT NULL,
-  PRIMARY KEY (`canonical_question_id`, `category_id`) USING BTREE,
-  INDEX `category_id`(`category_id` ASC) USING BTREE,
-  CONSTRAINT `canonical_question_category_ibfk_1` FOREIGN KEY (`canonical_question_id`) REFERENCES `canonical_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `canonical_question_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for canonical_question_topic
--- ----------------------------
-DROP TABLE IF EXISTS `canonical_question_topic`;
-CREATE TABLE `canonical_question_topic`  (
-  `canonical_question_id` bigint NOT NULL,
-  `topic_id` bigint NOT NULL,
-  `mapped_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`canonical_question_id`, `topic_id`) USING BTREE,
-  INDEX `idx_cqt_canonical`(`canonical_question_id` ASC) USING BTREE,
-  INDEX `idx_cqt_topic`(`topic_id` ASC) USING BTREE,
-  CONSTRAINT `fk_cqt_canonical` FOREIGN KEY (`canonical_question_id`) REFERENCES `canonical_question` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_cqt_topic` FOREIGN KEY (`topic_id`) REFERENCES `topic` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for category
@@ -107,72 +41,139 @@ CREATE TABLE `entity_review_log`  (
   `entity_id` bigint NOT NULL,
   `action` enum('APPROVE','REJECT') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `reviewer` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `review_comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  `review_comment` tinytext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
   `action_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_erl_entity`(`entity_type` ASC, `entity_id` ASC) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
--- Table structure for extracted_question
+-- Table structure for prompt_log
 -- ----------------------------
-DROP TABLE IF EXISTS `extracted_question`;
-CREATE TABLE `extracted_question`  (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
-  `interview_id` bigint NOT NULL COMMENT '对应 interviews.content_id，外键',
-  `question_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '抽取出的面试官提问文本',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '写入时间',
-  `canonicalized` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已经对该问题做过标准化',
-  `categorized` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否对问题进行分类',
-  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+DROP TABLE IF EXISTS `prompt_log`;
+CREATE TABLE `prompt_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `candidate_id` bigint NOT NULL,
+  `prompt_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `response_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
-  INDEX `idx_q_interview`(`interview_id` ASC) USING BTREE,
-  CONSTRAINT `fk_extracted_question_interview` FOREIGN KEY (`interview_id`) REFERENCES `interview` (`content_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 10005 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '原始抽取问题表' ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for extracted_question_canonical
--- ----------------------------
-DROP TABLE IF EXISTS `extracted_question_canonical`;
-CREATE TABLE `extracted_question_canonical`  (
-  `extracted_question_id` bigint NOT NULL,
-  `canonical_question_id` bigint NOT NULL,
-  `mapped_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`extracted_question_id`, `canonical_question_id`) USING BTREE,
-  INDEX `idx_eqc_extracted`(`extracted_question_id` ASC) USING BTREE,
-  INDEX `idx_eqc_canonical`(`canonical_question_id` ASC) USING BTREE,
-  CONSTRAINT `fk_eqc_canonical` FOREIGN KEY (`canonical_question_id`) REFERENCES `canonical_question` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_eqc_extracted` FOREIGN KEY (`extracted_question_id`) REFERENCES `extracted_question` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  INDEX `candidate_id`(`candidate_id` ASC) USING BTREE,
+  CONSTRAINT `prompt_log_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `standardization_candidate` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
--- Table structure for extracted_question_category
+-- Table structure for raw_interview
 -- ----------------------------
-DROP TABLE IF EXISTS `extracted_question_category`;
-CREATE TABLE `extracted_question_category`  (
-  `question_id` bigint NOT NULL,
-  `category_id` bigint NOT NULL,
-  `mapped_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`question_id`, `category_id`) USING BTREE,
-  INDEX `idx_q2c_question`(`question_id` ASC) USING BTREE,
-  INDEX `idx_q2c_category`(`category_id` ASC) USING BTREE,
-  CONSTRAINT `fk_q2c_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_q2c_question` FOREIGN KEY (`question_id`) REFERENCES `extracted_question` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
-
--- ----------------------------
--- Table structure for interview
--- ----------------------------
-DROP TABLE IF EXISTS `interview`;
-CREATE TABLE `interview`  (
+DROP TABLE IF EXISTS `raw_interview`;
+CREATE TABLE `raw_interview`  (
   `content_id` bigint NOT NULL COMMENT 'JSON 中的 contentId，全局唯一主键',
   `title` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '帖子标题，对应 momentData.title',
   `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '帖子的完整文本内容',
   `show_time` datetime NULL DEFAULT NULL COMMENT '前端展示时间，对应 momentData.showTime',
   `fetched_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '爬取时的时间戳',
-  `extracted` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已经从原始面经抽取出问题',
+  `questions_extracted` tinyint(1) NOT NULL DEFAULT 0 COMMENT '已抽取问句',
   PRIMARY KEY (`content_id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '面经主表：存储原始帖子信息' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for raw_question
+-- ----------------------------
+DROP TABLE IF EXISTS `raw_question`;
+CREATE TABLE `raw_question`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `interview_id` bigint NOT NULL COMMENT '对应 interviews.content_id，外键',
+  `question_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '抽取出的面试官提问文本',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '写入时间',
+  `candidates_generated` tinyint(1) NOT NULL DEFAULT 0 COMMENT '已生成标准化候选',
+  `categories_assigned` tinyint(1) NOT NULL DEFAULT 0 COMMENT '已分配类别',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_q_interview`(`interview_id` ASC) USING BTREE,
+  CONSTRAINT `fk_extracted_question_interview` FOREIGN KEY (`interview_id`) REFERENCES `raw_interview` (`content_id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 10005 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '原始抽取问题表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for raw_question_category
+-- ----------------------------
+DROP TABLE IF EXISTS `raw_question_category`;
+CREATE TABLE `raw_question_category`  (
+  `raw_question_id` bigint NOT NULL,
+  `category_id` bigint NOT NULL,
+  `assigned_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`raw_question_id`, `category_id`) USING BTREE,
+  INDEX `idx_q2c_question`(`raw_question_id` ASC) USING BTREE,
+  INDEX `idx_q2c_category`(`category_id` ASC) USING BTREE,
+  CONSTRAINT `fk_q2c_category` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_q2c_question` FOREIGN KEY (`raw_question_id`) REFERENCES `raw_question` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for raw_to_standard_map
+-- ----------------------------
+DROP TABLE IF EXISTS `raw_to_standard_map`;
+CREATE TABLE `raw_to_standard_map`  (
+  `raw_question_id` bigint NOT NULL,
+  `standard_question_id` bigint NOT NULL,
+  `mapped_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`raw_question_id`, `standard_question_id`) USING BTREE,
+  INDEX `idx_eqc_extracted`(`raw_question_id` ASC) USING BTREE,
+  INDEX `idx_eqc_canonical`(`standard_question_id` ASC) USING BTREE,
+  CONSTRAINT `fk_eqc_canonical` FOREIGN KEY (`standard_question_id`) REFERENCES `standard_question` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_eqc_extracted` FOREIGN KEY (`raw_question_id`) REFERENCES `raw_question` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for standard_question
+-- ----------------------------
+DROP TABLE IF EXISTS `standard_question`;
+CREATE TABLE `standard_question`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `question_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `status` enum('PENDING','APPROVED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'PENDING',
+  `usage_count` int NOT NULL DEFAULT 1,
+  `creator` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `reviewer` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `reviewed_at` datetime NULL DEFAULT NULL,
+  `review_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `embedding` json NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for standard_question_category
+-- ----------------------------
+DROP TABLE IF EXISTS `standard_question_category`;
+CREATE TABLE `standard_question_category`  (
+  `standard_question_id` bigint NOT NULL,
+  `category_id` bigint NOT NULL,
+  PRIMARY KEY (`standard_question_id`, `category_id`) USING BTREE,
+  INDEX `category_id`(`category_id` ASC) USING BTREE,
+  CONSTRAINT `standard_question_category_ibfk_1` FOREIGN KEY (`standard_question_id`) REFERENCES `standard_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `standard_question_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for standardization_candidate
+-- ----------------------------
+DROP TABLE IF EXISTS `standardization_candidate`;
+CREATE TABLE `standardization_candidate`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `candidate_text` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
+  `embedding` json NULL,
+  `raw_question_id` bigint NOT NULL,
+  `matched_standard_id` bigint NULL DEFAULT NULL,
+  `status` enum('PENDING','MERGED','PROMOTED','SKIPPED','UNDER_REVIEW') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'PENDING',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `source_question_id`(`raw_question_id` ASC) USING BTREE,
+  INDEX `matched_canonical_id`(`matched_standard_id` ASC) USING BTREE,
+  CONSTRAINT `standardization_candidate_ibfk_1` FOREIGN KEY (`raw_question_id`) REFERENCES `raw_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `standardization_candidate_ibfk_2` FOREIGN KEY (`matched_standard_id`) REFERENCES `standard_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 7167 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for topic
