@@ -19,15 +19,4 @@ public class LangChainConfig {
     private String baseUrl;
     private String modelName;
     private Duration timeout;
-
-    @Primary
-    @Bean
-    public ChatModel chatModel() {
-        return OpenAiChatModel.builder()
-                .apiKey(apiKey)
-                .baseUrl(baseUrl)
-                .modelName(modelName)
-                .timeout(timeout)
-                .build();
-    }
 }

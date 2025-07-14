@@ -1,4 +1,4 @@
-package com.interviewradar.crawler;
+package com.interviewradar.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.interviewradar.model.entity.RawInterview;
@@ -44,9 +44,10 @@ public class CrawlerService {
     public List<RawInterviewDTO> fetchListPage(int page) {
         long ts = System.currentTimeMillis();
         JsonNode root = restTemplate.getForObject(LIST_API, JsonNode.class, page, ts);
+        assert root != null;
         JsonNode records = root.path("data").path("records");
 
-        if (!records.isArray() || records.size() == 0) {
+        if (!records.isArray() || records.isEmpty()) {
             return Collections.emptyList();
         }
 
@@ -103,27 +104,53 @@ public class CrawlerService {
     /**
      * 增量爬取新面经：从第 1 页开始，遇到已存在 contentId 即停止
      */
-    public void crawlNewInterviews() throws InterruptedException {
+    public void crawlNewInterviews() {
         int page = 1;
         outer:
         while (true) {
-            List<RawInterviewDTO> list = fetchListPage(page);
+            List<RawInterviewDTO> list;
+            try {
+                // 获取指定页的新数据列表
+                list = fetchListPage(page);
+            } catch (Exception e) {
+                log.error("抓取第 {} 页面经列表时发生异常，停止爬取", page, e);
+                break; // 发生错误时终止整个爬取
+            }
+
             if (list.isEmpty()) {
                 log.info("第 {} 页无新数据，停止增量爬取", page);
                 break;
             }
+
             for (RawInterviewDTO dto : list) {
-                if (interviewRepo.existsById(dto.getContentId())) {
-                    log.info("遇到已存在的面经 contentId={}，停止增量爬取", dto.getContentId());
-                    break outer;
+                try {
+                    // 如果已存在，则停止增量爬取
+                    if (interviewRepo.existsById(dto.getContentId())) {
+                        log.info("遇到已存在的面经 contentId={}，停止增量爬取", dto.getContentId());
+                        break outer;
+                    }
+                    // 保存新面经
+                    saveInterview(dto);
+                } catch (Exception e) {
+                    log.error("处理面经 contentId={} 时发生异常，跳过此条记录", dto.getContentId(), e);
+                    // 遇到单条记录异常，跳过继续下一条
+                    continue;
                 }
-                saveInterview(dto);
             }
-            Thread.sleep(delayMs);
+
+            try {
+                Thread.sleep(delayMs);
+            } catch (InterruptedException ie) {
+                log.warn("线程休眠被中断，停止爬取", ie);
+                Thread.currentThread().interrupt(); // 恢复中断状态
+                break;
+            }
+
             page++;
         }
         log.info("增量爬取完成");
     }
+
 
     /**
      * 去重并保存一条面经到 interviews 表
@@ -139,6 +166,7 @@ public class CrawlerService {
                 .content(dto.getContent())
                 .showTime(LocalDateTime.from(dto.getShowTime()))
                 .fetchedAt( LocalDateTime.now())
+                .questionsExtracted(false)
                 .build();
         interviewRepo.save(iv);
         log.info("已保存面经 contentId={}", dto.getContentId());

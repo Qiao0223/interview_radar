@@ -1,5 +1,8 @@
 package com.interviewradar.llm;
 
+import lombok.Getter;
+
+@Getter
 public enum PromptTemplate {
 
     // 1. 问题抽取模板
@@ -232,5 +235,4 @@ public enum PromptTemplate {
 
     private final String template;
     PromptTemplate(String template) { this.template = template; }
-    public String getTemplate() { return template; }
 }

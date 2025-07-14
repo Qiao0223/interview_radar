@@ -1,72 +1,52 @@
 package com.interviewradar.service;
 
-import com.interviewradar.model.entity.RawInterview;
-import com.interviewradar.model.entity.RawQuestion;
-import com.interviewradar.model.repository.RawQuestionRepository;
-import com.interviewradar.model.repository.RawInterviewRepository;
-import lombok.Data;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Data
+@RequiredArgsConstructor
 @Service
 public class RawInterviewProcessingService {
 
-    private final ThreadPoolTaskExecutor taskExecutor;
-    private final RawInterviewRepository interviewRepo;
-    private final RawQuestionRepository questionRepo;
     private final RawQuestionExtractionService extractionService;
     private final RawQuestionClassificationService classificationService;
-    private final AtomicBoolean windowOpen = new AtomicBoolean(false);
+    private final CrawlerService crawlerService;
+    private final RawQuestionStandardizationService standardizationService;
+    private final StandardizationJudgementService judgementService;
 
-    private final AtomicBoolean extractionStarted = new AtomicBoolean(false);
-    private final AtomicBoolean classificationStarted = new AtomicBoolean(false);
+    AtomicBoolean windowOpen = new AtomicBoolean(false);
+    private static final Logger log = LoggerFactory.getLogger(RawInterviewProcessingService.class);
 
-    public void startWindow() {
+
+    public void startWindow(){
+        // 打开窗口
         windowOpen.set(true);
 
-        if (extractionStarted.compareAndSet(false, true)) {
-            System.out.println("[INFO] 开始提取问题任务");
-        }
+        // 从牛客爬取面经原文
+        log.info("开始爬虫任务");
+        crawlerService.crawlNewInterviews();
 
-        // 使用 repository 查询未提取的问题
-        List<RawInterview> pending = interviewRepo.findByQuestionsExtractedFalse();
+        // 从面经原文提取问题
+        log.info("开始提取问题任务");
+        extractionService.extractAllInterviews();
 
-        List<CompletableFuture<Void>> extractFuts = pending.stream()
-                .map(iv -> CompletableFuture.runAsync(
-                        () -> extractionService.extractAndSave(iv),
-                        taskExecutor
-                ))
-                .toList();
+        // 提取完成后，直接同步触发分类流程
+        log.info("开始问题分类任务");
+        classificationService.classifyAllRawQuestions();
 
-        CompletableFuture.allOf(extractFuts.toArray(new CompletableFuture[0]))
-                .thenRunAsync(this::runClassification, taskExecutor);
+        // 将分类好的 raw question 生成标准问题
+        log.info("开始标准化任务");
+        standardizationService.standardizeAll();
+
+        log.info("开始 LLM 决策任务");
+        judgementService.judgeAll();
+
     }
 
     public void stopWindow() {
         windowOpen.set(false);
-        extractionStarted.set(false);
-        classificationStarted.set(false);
-    }
-
-    private void runClassification() {
-        if (!windowOpen.get()) return;
-
-        if (classificationStarted.compareAndSet(false, true)) {
-            System.out.println("[INFO] 开始分类问题任务");
-        }
-
-        List<RawQuestion> toClassify = questionRepo.findByCategoriesAssignedFalse();
-
-        if (toClassify.isEmpty()) return;
-
-        CompletableFuture.runAsync(
-                () -> classificationService.classifyBatch(toClassify),
-                taskExecutor
-        );
     }
 }

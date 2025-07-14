@@ -1,6 +1,5 @@
 package com.interviewradar.config;
 
-import com.interviewradar.service.AliyunEmbeddingService;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import lombok.Data;
@@ -38,13 +37,5 @@ public class AliyunEmbeddingConfig {
                 .dimensions(dimension)
                 .timeout(Duration.ofSeconds(60))
                 .build();
-    }
-
-    /**
-     * Wrap it in your service with the configured dimension.
-     */
-    //@Bean
-    public AliyunEmbeddingService aliyunEmbeddingService(EmbeddingModel aliyunEmbeddingModel) {
-        return new AliyunEmbeddingService(aliyunEmbeddingModel);
     }
 }

@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -23,6 +24,7 @@ public class RawQuestionExtractionTests {
     @Autowired
     RawQuestionExtractionService service;
     @Autowired
+    @Qualifier("deepseekReasonerModel")
     ChatModel chatModel;
     @Autowired
     RawInterviewRepository interviewRepo;
@@ -32,15 +34,15 @@ public class RawQuestionExtractionTests {
     @Test
     public void llmGenerateCanBeCalled() throws Exception {
         // 验证 llm.generate 方法本身能正常调用
-        PromptContext.set(TaskType.STANDARDIZATION, 1L);
-        String out = chatModel.chat("hello");
+        PromptContext.add(TaskType.EXTRACTION, 2L);
+        String out = chatModel.chat("你好，你是什么模型？");
         Assertions.assertNotNull(out); // 可选，验证返回结果非空
     }
 
     @Test
     public void extractQuestionsTriggersLlmGenerate() throws Exception {
         // 验证 service.extractQuestions 能顺利调用 llm.generate 并不抛异常
-        List<String> qs = service.extractQuestions(
+        List<String> qs = service.extractQuestions(2028L,
                 "快离职啦，面经发出来给大家\n" +
                         "一面 （25/3/10）\n" +
                         "    答的不是很好，但是面试官非常好，跟我说了很多东西，而且非常有耐心，感恩。\n" +
@@ -61,7 +63,7 @@ public class RawQuestionExtractionTests {
 
     @Test
     public void extractAndSaveQuestions() throws Exception {
-        RawInterview interview = interviewRepo.findAll().stream()
+        RawInterview interview = interviewRepo.findByQuestionsExtractedFalse().stream()
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("数据库中无 InterviewEntity 数据"));
         service.extractAndSave(interview);

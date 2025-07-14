@@ -2,31 +2,30 @@ package com.interviewradar.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interviewradar.llm.PromptContext;
 import com.interviewradar.model.entity.RawInterview;
 import com.interviewradar.model.entity.RawQuestion;
+import com.interviewradar.model.enums.TaskType;
 import com.interviewradar.model.repository.RawQuestionRepository;
 import com.interviewradar.model.repository.RawInterviewRepository;
 import com.interviewradar.llm.PromptTemplate;
 import dev.langchain4j.model.chat.ChatModel;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.interviewradar.common.Utils.extractJson;
 
 /**
  * 基于大语言模型（LLM）从原始面经中抽取面试题目的服务类
  */
-@RequiredArgsConstructor
 @Service
 public class RawQuestionExtractionService {
 
@@ -34,10 +33,25 @@ public class RawQuestionExtractionService {
     @Autowired
     private RawQuestionExtractionService selfProxy;
 
-    private final ChatModel chatModel; // LangChain4j Chat model
-    private final RawQuestionRepository questionRepo; // 问题存储仓库
-    private final RawInterviewRepository interviewRepo; // 面经存储仓库
-    private final ObjectMapper mapper = new ObjectMapper(); // 用于解析 JSON
+    private final ChatModel chatModel;
+    private final RawQuestionRepository questionRepo;
+    private final RawInterviewRepository interviewRepo;
+    private final ObjectMapper mapper;
+
+    @Autowired
+    public RawQuestionExtractionService(
+            @Qualifier("deepseekReasonerModel")
+            ChatModel chatModel,
+            RawQuestionRepository questionRepo,
+            RawInterviewRepository interviewRepo,
+            ObjectMapper mapper
+    ) {
+        this.chatModel = chatModel;
+        this.questionRepo = questionRepo;
+        this.interviewRepo = interviewRepo;
+        this.mapper = mapper;
+    }
+
 
     /**
      * 从原始面经内容中提取问题文本列表
@@ -45,14 +59,15 @@ public class RawQuestionExtractionService {
      * @return 提取出的面试问题列表
      * @throws Exception 如果解析或 LLM 调用失败
      */
-    public List<String> extractQuestions(String rawInterview) throws Exception {
+    public List<String> extractQuestions(Long interviewId, String rawInterview) throws Exception {
         // 1. 构造 prompt，将原始面经注入模板
         dev.langchain4j.model.input.PromptTemplate template =
                 dev.langchain4j.model.input.PromptTemplate.from(
                         PromptTemplate.QUESTION_EXTRACTION.getTemplate());
-        String prompt = template.apply(java.util.Map.of("rawInterview", rawInterview)).text();
+        String prompt = template.apply(Map.of("rawInterview", rawInterview)).text();
         //System.out.println("最终构造的 prompt >>>\n" + prompt);
         // 2. 调用大语言模型生成响应
+        PromptContext.add(TaskType.EXTRACTION, interviewId);
         String llmResponse = chatModel.chat(prompt);
 
         System.out.println("原始面经 >>>\n" + rawInterview);
@@ -90,7 +105,7 @@ public class RawQuestionExtractionService {
             interview.setQuestionsExtracted(true);
             interviewRepo.save(interview);
             // 提取问题
-            List<String> questions = extractQuestions(rawInterview);
+            List<String> questions = extractQuestions(interviewId, rawInterview);
             List<RawQuestion> entities = new ArrayList<>();
             LocalDateTime now = LocalDateTime.now();
             for (String q : questions) {
@@ -107,7 +122,6 @@ public class RawQuestionExtractionService {
             // 批量保存
             questionRepo.saveAll(entities);
         } catch (Exception e) {
-            // TODO: 可以添加重试逻辑或记录日志
             throw new RuntimeException("面经提问提取与保存失败 interviewId=" + interviewId, e);
         }
     }
@@ -117,5 +131,19 @@ public class RawQuestionExtractionService {
      */
     public void extractAndSave(RawInterview interview) {
         selfProxy.extractAndSave(interview.getId(), interview.getContent());
+    }
+
+    /**
+     * 无参方法：批量拉取所有未提取的面经并执行提取保存
+     */
+    public void extractAllInterviews() {
+        List<RawInterview> pending = interviewRepo.findByQuestionsExtractedFalse();
+        for (RawInterview interview : pending) {
+            try {
+                selfProxy.extractAndSave(interview);
+            } catch (Exception e) {
+                System.err.println("面经提取失败 interviewId=" + interview.getId() + ": " + e.getMessage());
+            }
+        }
     }
 }

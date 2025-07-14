@@ -15,23 +15,27 @@ spring:
         show-sql: false
 
 langchain4j:
-    open-ai:
-        chat-model:
+    deepseek:
+        chat:
+            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+            base-url: https://api.deepseek.com/v1
+            model-name: deepseek-chat
             timeout: 600s
-#           deepseek
-#            api-key: 
-#            base-url: https://api.deepseek.com/v1
-#            model-name: deepseek-reasoner
-
-#           aliyun
-            api-key: 
+        reasoner:
+            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+            base-url: https://api.deepseek.com/v1
+            model-name: deepseek-reasoner
+            timeout: 600s
+    aliyun:
+        qwen-plus:
+            api-key: sk-c8537643758b4d8da98f06a99dc603d9
             base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
             model-name: qwen-plus
-
+            timeout: 600s
 
 aliyun:
     embedding:
-        api-key: 
+        api-key: sk-c8537643758b4d8da98f06a99dc603d9
         base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
         model: text-embedding-v4
         dimension: 1024
@@ -40,11 +44,11 @@ crawler:
     delay-ms: 5000
 
 classification:
-    batch-size: 5
+    batch-size: 50
 
 threadpool:
-    core-size: 5
-    max-size: 5
+    core-size: 2
+    max-size: 2
     queue-capacity: 10000
 
 
@@ -52,4 +56,6 @@ milvus:
     host: 115.190.83.184
     port: 19530
     embedding-dim: 1024
-
+    topK: 10
+    nprob: 32
+    threshold: 0.5

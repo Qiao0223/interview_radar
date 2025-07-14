@@ -1,6 +1,6 @@
 package com.interviewradar;
 
-import com.interviewradar.crawler.CrawlerService;
+import com.interviewradar.service.CrawlerService;
 import com.interviewradar.model.repository.RawInterviewRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ class CrawlerTests {
 
 
     @Test
-    void testCrawlNewInterviews() throws InterruptedException {
+    void testCrawlNewInterviews(){
         // 调用增量爬取
         crawler.crawlNewInterviews();
         // 爬完后，库里应该有 N (>0) 条数据

@@ -27,12 +27,14 @@ public class RawQuestionCategory {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "raw_question_id", nullable = false)
+    @ToString.Exclude
     private RawQuestion rawQuestion;
 
     @MapsId("categoryId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "category_id", nullable = false)
+    @ToString.Exclude
     private Category category;
 
     @ColumnDefault("CURRENT_TIMESTAMP")

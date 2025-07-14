@@ -2,22 +2,20 @@ package com.interviewradar.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewradar.common.Utils;
+import com.interviewradar.llm.PromptContext;
 import com.interviewradar.llm.PromptTemplate;
 import com.interviewradar.milvus.MilvusSearchHelper;
 import com.interviewradar.model.dto.CandidateDecisionDTO;
 import com.interviewradar.model.dto.ScoredStandardDTO;
 import com.interviewradar.model.entity.*;
-import com.interviewradar.model.enums.CandidateDecisionStatus;
-import com.interviewradar.model.enums.CandidatePromotionStatus;
-import com.interviewradar.model.enums.CandidateReviewStatus;
-import com.interviewradar.model.enums.StandardStatus;
+import com.interviewradar.model.enums.*;
 import com.interviewradar.model.repository.StandardQuestionCategoryRepository;
 import com.interviewradar.model.repository.StandardQuestionRepository;
 import com.interviewradar.model.repository.StandardizationCandidateRepository;
 import com.interviewradar.model.repository.RawToStandardMapRepository;
 import dev.langchain4j.model.chat.ChatModel;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +26,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
-@RequiredArgsConstructor
 public class StandardizationJudgementService {
 
     private final StandardizationCandidateRepository candidateRepo;
@@ -42,10 +39,24 @@ public class StandardizationJudgementService {
     @Value("${milvus.threshold:0}")
     private double threshold;
 
+    public StandardizationJudgementService(StandardizationCandidateRepository candidateRepo,
+                                           StandardQuestionRepository questionRepo,
+                                           RawToStandardMapRepository mapRepo,
+                                           MilvusSearchHelper milvusSearchHelper,
+                                           @Qualifier("deepseekChatModel")ChatModel chatModel,
+                                           StandardQuestionCategoryRepository sqCatRepo) {
+        this.candidateRepo = candidateRepo;
+        this.questionRepo = questionRepo;
+        this.mapRepo = mapRepo;
+        this.milvusSearchHelper = milvusSearchHelper;
+        this.chatModel = chatModel;
+        this.sqCatRepo = sqCatRepo;
+    }
+
     /**
      * 执行所有待 LLM 决策的候选
      */
-    public void judgeAllPending() {
+    public void judgeAll() {
         var pending = candidateRepo.findByDecisionStatus(CandidateDecisionStatus.PENDING);
         pending.forEach(this::processSingle);
     }
@@ -55,14 +66,15 @@ public class StandardizationJudgementService {
      */
     @Transactional
     public void processSingle(StandardizationCandidate cand) {
-        cand = candidateRepo.findById(cand.getId()).orElseThrow();
+        Long candId = cand.getId();
+        cand = candidateRepo.findById(candId).orElseThrow();
 
         // 解析 embedding
         float[] vector;
         try {
             vector = objectMapper.readValue(cand.getEmbedding(), float[].class);
         } catch (Exception e) {
-            throw new RuntimeException("解析 embedding 失败, id=" + cand.getId(), e);
+            throw new RuntimeException("解析 embedding 失败, id=" + candId, e);
         }
 
         // Top-K 检索
@@ -83,6 +95,9 @@ public class StandardizationJudgementService {
                     );
                 })
                 .collect(Collectors.toList());
+
+        // 构造对话
+        PromptContext.add(TaskType.JUDGEMENT, candId);
 
         // 构造 Prompt 并调用 LLM
         String prompt = buildDecisionPrompt(cand.getCandidateText(), standards);

@@ -4,15 +4,17 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewradar.common.Utils;
 import com.interviewradar.config.ClassificationProperties;
+import com.interviewradar.llm.PromptContext;
 import com.interviewradar.model.entity.Category;
 import com.interviewradar.model.entity.RawQuestion;
+import com.interviewradar.model.enums.TaskType;
 import com.interviewradar.model.repository.CategoryRepository;
 import com.interviewradar.model.repository.RawQuestionRepository;
 import com.interviewradar.llm.PromptTemplate;
 import dev.langchain4j.model.chat.ChatModel;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -27,7 +29,6 @@ import java.util.stream.Collectors;
  * 分类服务：调用 LLM 将题目按类别进行批量分类
  */
 @Service
-@RequiredArgsConstructor
 public class RawQuestionClassificationService {
     @Lazy
     @Autowired
@@ -39,6 +40,19 @@ public class RawQuestionClassificationService {
     private final ClassificationProperties props;     // batchSize 配置
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 对象映射器，用于解析 LLM 返回的 JSON
     private final ThreadPoolTaskExecutor taskExecutor;
+
+    public RawQuestionClassificationService(
+                @Qualifier("deepseekChatModel")ChatModel chatModel,
+                CategoryRepository categoryRepo,
+                RawQuestionRepository questionRepo,
+                ClassificationProperties props,
+                ThreadPoolTaskExecutor taskExecutor) {
+        this.chatModel = chatModel;
+        this.categoryRepo = categoryRepo;
+        this.questionRepo = questionRepo;
+        this.props = props;
+        this.taskExecutor = taskExecutor;
+    }
 
 
     public void classifyBatch(List<RawQuestion> questions) {
@@ -69,6 +83,13 @@ public class RawQuestionClassificationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processBatch(List<RawQuestion> batch, String formattedCats) {
         System.out.println("Thread ID: " + Thread.currentThread().getId() + ", Name: " + Thread.currentThread().getName());
+
+        // 构造上下文
+        List<Long> idList = batch.stream()
+                .map(RawQuestion::getId)
+                .toList();
+        PromptContext.addBatch(TaskType.CLASSIFICATION, idList);
+
         String prompt = buildBatchPrompt(batch, formattedCats);
         String raw = chatModel.chat(prompt);
         String json = Utils.extractJsonArray(raw);
@@ -154,6 +175,15 @@ public class RawQuestionClassificationService {
         return categories.stream()
                 .map(c -> c.getId() + ". " + c.getName() + "（" + c.getDescription() + "）")
                 .collect(Collectors.joining("\n"));
+    }
+
+    public void classifyAllRawQuestions() {
+        List<RawQuestion> allRawQuestions = questionRepo.findByCategoriesAssignedFalse();
+        try{
+            selfProxy.classifyBatch(allRawQuestions);
+        }catch (Exception e){
+            System.err.println("分类失败");
+        }
     }
 
     /**

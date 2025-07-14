@@ -4,6 +4,8 @@ import com.interviewradar.model.enums.TaskType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -48,15 +50,16 @@ public class PromptLog {
     @Column(name = "error_message")
     private String errorMessage;
 
-    @Column(name = "template_version", length = 50)
-    private String templateVersion;
+    @Column(name = "model_version", length = 50)
+    private String modelVersion;
 
+    @CreationTimestamp
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
 }

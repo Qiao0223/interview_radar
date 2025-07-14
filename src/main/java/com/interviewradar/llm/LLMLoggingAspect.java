@@ -1,57 +1,81 @@
 package com.interviewradar.llm;
 
 import com.interviewradar.model.entity.PromptLog;
-import com.interviewradar.model.enums.TaskType;
 import com.interviewradar.model.repository.PromptLogRepository;
-import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.Around;
-import org.aspectj.lang.annotation.Aspect;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.aspectj.lang.annotation.*;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Aspect
 @Component
+@RequiredArgsConstructor
 public class LLMLoggingAspect {
 
-    @Autowired
-    private PromptLogRepository logRepo;
+    private final PromptLogRepository promptLogRepository;
 
-    @Around("execution(* dev.langchain4j.model.chat.ChatModel.chat(..))")
+    /**
+     * 拦截所有 ChatModel.chat(...) 方法调用
+     */
+    @Pointcut("execution(* dev.langchain4j.model.chat.ChatModel.chat(..))")
+    public void chatPointcut() {}
+
+    @Around("chatPointcut()")
     public Object logChat(ProceedingJoinPoint pjp) throws Throwable {
-        Object[] args = pjp.getArgs();
-        String prompt = args != null && args.length > 0 ? args[0].toString() : "";
-
         long start = System.currentTimeMillis();
         boolean success = true;
+        String errorMsg = null;
+
+        // 尝试从参数中获取 prompt 文本
+        Object[] args = pjp.getArgs();
+        String promptText = args != null && args.length > 0
+                ? String.valueOf(args[0])
+                : "";
+
         String response = null;
-        String error = null;
-
         try {
-            response = (String) pjp.proceed();
+            response =(String) pjp.proceed();
             return response;
-        } catch (Throwable t) {
+        } catch (Throwable ex) {
             success = false;
-            error = t.getMessage();
-            throw t;
+            errorMsg = ex.getMessage();
+            throw ex;
         } finally {
-            long duration = (System.currentTimeMillis() - start);
-            PromptContext.Context ctx = PromptContext.get().orElse(new PromptContext.Context(TaskType.UNKNOWN, null));
+            long durationMs = System.currentTimeMillis() - start;
+            int durationS = (int) (durationMs);
 
-            PromptLog log = new PromptLog();
-            log.setTaskType(ctx.taskType());
-            log.setTaskId(ctx.taskId());
-            log.setModelName(pjp.getTarget().getClass().getSimpleName());
-            log.setPrompt(prompt);
-            log.setResponse(response);
-            log.setDurationMs((int) duration);
-            log.setSuccess(success);
-            log.setErrorMessage(error);
-            log.setCreatedAt(java.time.LocalDateTime.now());
-            log.setUpdatedAt(java.time.LocalDateTime.now());
-            logRepo.save(log);
+            // 获取 llm 模型信息
+            Object target = pjp.getTarget();
+            String modelName = target.getClass().getSimpleName();
+            String modelVersion = null;
 
-            PromptContext.clear();
+            if (target instanceof MetadataChatModel metadata) {
+                modelName = metadata.getModelName();
+                modelVersion = metadata.getModelVersion();
+            }
+
+            // 只有在 ThreadLocal 中存在上下文时才记录
+            List<PromptContext.Context> contexts = PromptContext.getAll();
+            if (!contexts.isEmpty()) {
+                for (PromptContext.Context ctx : contexts) {
+                    PromptLog log = PromptLog.builder()
+                            .taskType(ctx.taskType())
+                            .taskId(ctx.taskId())
+                            .prompt(promptText)
+                            .response(response)
+                            .modelName(modelName)
+                            .modelVersion(modelVersion)
+                            .durationMs(durationS)
+                            .success(success)
+                            .errorMessage(errorMsg)
+                            .build();
+                    promptLogRepository.save(log);
+                }
+                // 清理，避免影响下次调用
+                PromptContext.clear();
+            }
         }
     }
 }

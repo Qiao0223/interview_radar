@@ -4,27 +4,28 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.interviewradar.common.Utils;
 import com.interviewradar.config.ClassificationProperties;
+import com.interviewradar.llm.PromptContext;
 import com.interviewradar.llm.PromptTemplate;
 import com.interviewradar.model.entity.RawQuestion;
 import com.interviewradar.model.entity.StandardizationCandidate;
 import com.interviewradar.model.enums.CandidateDecisionStatus;
+import com.interviewradar.model.enums.CandidatePromotionStatus;
+import com.interviewradar.model.enums.CandidateReviewStatus;
+import com.interviewradar.model.enums.TaskType;
 import com.interviewradar.model.repository.StandardizationCandidateRepository;
 import com.interviewradar.model.repository.RawQuestionRepository;
 import dev.langchain4j.model.chat.ChatModel;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -36,7 +37,6 @@ import java.util.stream.Collectors;
  * 使用多字段 JSON 格式保持一对多对应关系，并显示原问题与标准化结果映射
  */
 @Service
-@RequiredArgsConstructor
 public class RawQuestionStandardizationService {
 
     @Lazy
@@ -50,6 +50,29 @@ public class RawQuestionStandardizationService {
     private final ObjectMapper objectMapper;
     private final ClassificationProperties props;
     private final ThreadPoolTaskExecutor taskExecutor;
+    private final RawQuestionRepository rawQuestionRepo;
+
+    public RawQuestionStandardizationService(RawQuestionRepository extractedQuestionRepo,
+                                             StandardizationCandidateRepository candidateRepo,
+                                             @Qualifier("deepseekChatModel") ChatModel chatModel,
+                                             AliyunEmbeddingService embeddingService,
+                                             ObjectMapper objectMapper,
+                                             ClassificationProperties props,
+                                             ThreadPoolTaskExecutor taskExecutor, RawQuestionRepository rawQuestionRepo) {
+        this.extractedQuestionRepo = extractedQuestionRepo;
+        this.candidateRepo = candidateRepo;
+        this.chatModel = chatModel;
+        this.embeddingService = embeddingService;
+        this.objectMapper = objectMapper;
+        this.props = props;
+        this.taskExecutor = taskExecutor;
+        this.rawQuestionRepo = rawQuestionRepo;
+    }
+
+    public void standardizeAll(){
+        List<RawQuestion> extracted = rawQuestionRepo.findByCandidatesGeneratedFalseAndCategoriesAssignedTrue();
+        selfProxy.batchStandardize(extracted);
+    }
 
 
     /**
@@ -88,6 +111,11 @@ public class RawQuestionStandardizationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processBatch(List<RawQuestion> batch) {
+        List<Long> idList = batch.stream()
+                .map(RawQuestion::getId)
+                .toList();
+        PromptContext.addBatch(TaskType.STANDARDIZATION, idList);
+
         String prompt = buildBatchPrompt(batch);
         String raw = chatModel.chat(prompt);
         List<StandardItem> items = parseStandardizedItems(raw);
@@ -118,6 +146,8 @@ public class RawQuestionStandardizationService {
                         .embedding(embeddingJson)
                         .rawQuestion(src)
                         .decisionStatus(CandidateDecisionStatus.PENDING)
+                        .reviewStatus(CandidateReviewStatus.PENDING)
+                        .promotionStatus(CandidatePromotionStatus.NONE)
                         .createdAt(LocalDateTime.now())
                         .generatedAt(LocalDateTime.now())
                         .build();

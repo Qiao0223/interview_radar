@@ -37,12 +37,14 @@ public class RawToStandardMap {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "raw_question_id", nullable = false)
+    @ToString.Exclude
     private RawQuestion rawQuestion;
 
     @MapsId("standardQuestionId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "standard_question_id", nullable = false)
+    @ToString.Exclude
     private StandardQuestion standardQuestion;
 
     @ColumnDefault("CURRENT_TIMESTAMP")

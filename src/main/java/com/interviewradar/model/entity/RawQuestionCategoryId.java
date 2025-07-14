@@ -5,6 +5,7 @@ import jakarta.persistence.Embeddable;
 import lombok.*;
 import org.hibernate.Hibernate;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -16,6 +17,7 @@ import java.util.Objects;
 @ToString
 @Embeddable
 public class RawQuestionCategoryId implements Serializable {
+    @Serial
     private static final long serialVersionUID = 4577846109364163882L;
     @Column(name = "raw_question_id", nullable = false)
     private Long rawQuestionId;
