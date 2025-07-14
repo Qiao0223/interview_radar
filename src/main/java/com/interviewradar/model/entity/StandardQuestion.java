@@ -20,6 +20,7 @@ import java.util.Map;
 @Table(name = "standard_question", schema = "interview_radar")
 public class StandardQuestion {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
 
@@ -57,8 +58,8 @@ public class StandardQuestion {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "embedding", nullable = false)
+    @Column(name = "embedding", nullable = false )
     @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, Object> embedding;
+    private String embedding;
 
 }

@@ -11,17 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 @SpringBootTest
 @Transactional
 public class RawQuestionStandardizationTests {
 
     @Autowired
     private RawQuestionRepository extractedRepo;
-
-    @Autowired
-    private StandardizationCandidateRepository candidateRepo;
 
     @Autowired
     private RawQuestionStandardizationService service;

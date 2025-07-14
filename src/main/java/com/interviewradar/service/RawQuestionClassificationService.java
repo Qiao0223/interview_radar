@@ -10,6 +10,7 @@ import com.interviewradar.model.repository.CategoryRepository;
 import com.interviewradar.model.repository.RawQuestionRepository;
 import com.interviewradar.llm.PromptTemplate;
 import dev.langchain4j.model.chat.ChatModel;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -158,13 +159,10 @@ public class RawQuestionClassificationService {
     /**
      * 内部使用的批量分类结果条目类
      */
+    @Data
     private static class BatchItem {
         private int index;             // 题目在本批次中的序号
         private List<Long> categories; // LLM 返回的类别 ID 列表
 
-        public int getIndex() { return index; }
-        public void setIndex(int index) { this.index = index; }
-        public List<Long> getCategories() { return categories; }
-        public void setCategories(List<Long> categories) { this.categories = categories; }
     }
 }

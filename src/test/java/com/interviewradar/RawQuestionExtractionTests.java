@@ -1,6 +1,8 @@
 package com.interviewradar;
 
+import com.interviewradar.llm.PromptContext;
 import com.interviewradar.model.entity.RawInterview;
+import com.interviewradar.model.enums.TaskType;
 import com.interviewradar.model.repository.RawQuestionRepository;
 import com.interviewradar.model.repository.RawInterviewRepository;
 import dev.langchain4j.model.chat.ChatModel;
@@ -30,6 +32,7 @@ public class RawQuestionExtractionTests {
     @Test
     public void llmGenerateCanBeCalled() throws Exception {
         // 验证 llm.generate 方法本身能正常调用
+        PromptContext.set(TaskType.STANDARDIZATION, 1L);
         String out = chatModel.chat("hello");
         Assertions.assertNotNull(out); // 可选，验证返回结果非空
     }

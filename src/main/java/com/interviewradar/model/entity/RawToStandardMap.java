@@ -9,7 +9,6 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.time.LocalDateTime;
 
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
@@ -20,6 +19,17 @@ import java.time.LocalDateTime;
         @Index(name = "idx_eqc_canonical", columnList = "standard_question_id")
 })
 public class RawToStandardMap {
+
+    public RawToStandardMap(RawToStandardMapId id,
+                            RawQuestion rawQuestion,
+                            StandardQuestion standardQuestion,
+                            LocalDateTime mappedAt) {
+        this.id = id;
+        this.rawQuestion = rawQuestion;
+        this.standardQuestion = standardQuestion;
+        this.mappedAt = (mappedAt != null) ? mappedAt : LocalDateTime.now();
+    }
+
     @EmbeddedId
     private RawToStandardMapId id;
 
@@ -38,5 +48,15 @@ public class RawToStandardMap {
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "mapped_at", nullable = false)
     private LocalDateTime mappedAt;
+
+    /**
+     * 在保存前自动填充 mappedAt
+     */
+    @PrePersist
+    private void prePersist() {
+        if (mappedAt == null) {
+            mappedAt = LocalDateTime.now();
+        }
+    }
 
 }

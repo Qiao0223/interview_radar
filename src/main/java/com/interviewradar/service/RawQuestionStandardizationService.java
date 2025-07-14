@@ -7,7 +7,7 @@ import com.interviewradar.config.ClassificationProperties;
 import com.interviewradar.llm.PromptTemplate;
 import com.interviewradar.model.entity.RawQuestion;
 import com.interviewradar.model.entity.StandardizationCandidate;
-import com.interviewradar.model.enums.CandidateStatus;
+import com.interviewradar.model.enums.CandidateDecisionStatus;
 import com.interviewradar.model.repository.StandardizationCandidateRepository;
 import com.interviewradar.model.repository.RawQuestionRepository;
 import dev.langchain4j.model.chat.ChatModel;
@@ -117,7 +117,7 @@ public class RawQuestionStandardizationService {
                         .candidateText(title)
                         .embedding(embeddingJson)
                         .rawQuestion(src)
-                        .status(CandidateStatus.PENDING)
+                        .decisionStatus(CandidateDecisionStatus.PENDING)
                         .createdAt(LocalDateTime.now())
                         .generatedAt(LocalDateTime.now())
                         .build();

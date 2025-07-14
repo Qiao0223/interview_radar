@@ -11,4 +11,7 @@ public class MilvusProperties {
     private String host;
     private Integer port;
     private Integer embeddingDim;
+    private Integer topK;
+    private Integer nprob;
+    private Double threshold;
 }

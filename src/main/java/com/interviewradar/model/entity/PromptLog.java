@@ -1,10 +1,9 @@
 package com.interviewradar.model.entity;
 
+import com.interviewradar.model.enums.TaskType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.LocalDateTime;
 
@@ -15,30 +14,49 @@ import java.time.LocalDateTime;
 @Setter
 @ToString
 @Entity
-@Table(name = "prompt_log", schema = "interview_radar", indexes = {
-        @Index(name = "candidate_id", columnList = "candidate_id")
-})
+@Table(name = "prompt_log", schema = "interview_radar")
 public class PromptLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "candidate_id", nullable = false)
-    private StandardizationCandidate candidate;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "task_type", nullable = false)
+    private TaskType taskType;
+
+    @Column(name = "task_id")
+    private Long taskId;
+
+    @Column(name = "model_name", length = 100)
+    private String modelName;
 
 
-    @Column(name = "prompt_text", nullable = false)
-    private String promptText;
+    @Column(name = "prompt", nullable = false)
+    private String prompt;
 
+    @Column(name = "response")
+    private String response;
 
-    @Column(name = "response_text", nullable = false)
-    private String responseText;
+    @Column(name = "duration_ms")
+    private Integer durationMs;
+
+    @ColumnDefault("1")
+    @Column(name = "success")
+    private Boolean success;
+
+    @Column(name = "error_message")
+    private String errorMessage;
+
+    @Column(name = "template_version", length = 50)
+    private String templateVersion;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
 }

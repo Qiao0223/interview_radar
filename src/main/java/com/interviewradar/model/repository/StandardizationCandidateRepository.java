@@ -1,21 +1,18 @@
 package com.interviewradar.model.repository;
 
 import com.interviewradar.model.entity.StandardizationCandidate;
-import com.interviewradar.model.enums.CandidateStatus;
+import com.interviewradar.model.enums.CandidateDecisionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface StandardizationCandidateRepository extends JpaRepository<StandardizationCandidate, Long> {
 
-    // 查找所有未处理的候选问题（用于人工或系统归一流程）
-    List<StandardizationCandidate> findByStatus(CandidateStatus status);
 
-    // 查询某个标准问题下所有已归一进来的候选项
-    //List<StandardizationCandidate> findByMatchedStandard(Long canonicalId);
+    List<StandardizationCandidate> findByDecisionStatus(CandidateDecisionStatus decisionStatus);
 
-    // 批量删除指定状态的候选项（如：清理超期的 PENDING）
-    void deleteByStatus(CandidateStatus status);
+    Optional<StandardizationCandidate> findFirstByDecisionStatusOrderByCreatedAtAsc(CandidateDecisionStatus decisionStatus);
 }

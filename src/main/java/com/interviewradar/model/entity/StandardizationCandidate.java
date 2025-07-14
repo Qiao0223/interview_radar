@@ -1,6 +1,8 @@
 package com.interviewradar.model.entity;
 
-import com.interviewradar.model.enums.CandidateStatus;
+import com.interviewradar.model.enums.CandidateDecisionStatus;
+import com.interviewradar.model.enums.CandidatePromotionStatus;
+import com.interviewradar.model.enums.CandidateReviewStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
@@ -8,7 +10,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Builder
 @AllArgsConstructor
@@ -44,9 +45,19 @@ public class StandardizationCandidate {
     private StandardQuestion matchedStandard;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "decision_status", nullable = false, length = 20)
     @ColumnDefault("'PENDING'")
-    private CandidateStatus status;
+    private CandidateDecisionStatus decisionStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "promotion_status", nullable = false, length = 20)
+    @ColumnDefault("'NONE'")
+    private CandidatePromotionStatus promotionStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_status", nullable = false, length = 20)
+    @ColumnDefault("'PENDING'")
+    private CandidateReviewStatus reviewStatus;
 
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at")

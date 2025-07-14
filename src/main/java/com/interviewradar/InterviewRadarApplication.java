@@ -5,8 +5,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import dev.langchain4j.openai.spring.AutoConfig;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 @EnableConfigurationProperties
+@EnableAspectJAutoProxy
 @SpringBootApplication(exclude = {AutoConfig.class})
 @ConfigurationPropertiesScan("com.interviewradar.config")
 public class InterviewRadarApplication {
