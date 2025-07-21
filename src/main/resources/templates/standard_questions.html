@@ -1,3 +1,4 @@
+<!-- src/main/resources/templates/standard_questions.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -6,45 +7,52 @@
     <style>
         table {border-collapse: collapse; width: 100%;}
         th, td {border: 1px solid #ccc; padding: 8px; vertical-align: top;}
+        .pagination {margin: 16px 0;}
+        .pagination a {margin: 0 4px; text-decoration: none;}
+        .pagination .current {font-weight: bold;}
     </style>
 </head>
 <body>
 <h1>Standard Questions</h1>
+<form th:action="@{/standard-questions}" method="get">
+    <input type="text" name="q" th:value="${q}" placeholder="搜索问题..." />
+    <button type="submit">搜索</button>
+</form>
 <table>
     <thead>
     <tr>
-        <th>Question</th>
-        <th>Status</th>
-        <th>Usage Count</th>
+        <th>问题</th>
+        <th>状态</th>
+        <th>使用次数</th>
         <th>最近考察时间</th>
-        <th>Categories</th>
-        <th>Standardization Candidates</th>
-        <th>Raw Questions</th>
+        <th>分类</th>
+        <th>候选文本</th>
+        <th>原始问题</th>
     </tr>
     </thead>
     <tbody>
-    <tr th:each="q : ${questions}">
+    <tr th:each="q : ${page.content}">
         <td th:text="${q.questionText}"></td>
         <td th:text="${q.status}"></td>
         <td th:text="${q.usageCount}"></td>
         <td th:text="${#temporals.format(q.updatedAt, 'yyyy-MM-dd HH:mm')}"></td>
-        <td>
-            <ul>
-                <li th:each="c : ${q.categories}" th:text="${c}"></li>
-            </ul>
-        </td>
-        <td>
-            <ul>
-                <li th:each="c : ${q.candidateTexts}" th:text="${c}"></li>
-            </ul>
-        </td>
-        <td>
-            <ul>
-                <li th:each="r : ${q.rawQuestions}" th:text="${r}"></li>
-            </ul>
-        </td>
+        <td><ul><li th:each="c : ${q.categories}" th:text="${c}"></li></ul></td>
+        <td><ul><li th:each="c : ${q.candidateTexts}" th:text="${c}"></li></ul></td>
+        <td><ul><li th:each="r : ${q.rawQuestions}" th:text="${r}"></li></ul></td>
     </tr>
     </tbody>
 </table>
+<div class="pagination">
+    <a th:if="${page.hasPrevious()}"
+       th:href="@{/standard-questions(page=${page.number-1}, size=${size}, q=${q})}">上一页</a>
+    <span th:each="i : ${#numbers.sequence(0, page.totalPages-1)}">
+        <a th:if="${i != page.number}"
+           th:href="@{/standard-questions(page=${i}, size=${size}, q=${q})}"
+           th:text="${i+1}"></a>
+        <span th:if="${i == page.number}" class="current" th:text="${i+1}"></span>
+    </span>
+    <a th:if="${page.hasNext()}"
+       th:href="@{/standard-questions(page=${page.number+1}, size=${size}, q=${q})}">下一页</a>
+</div>
 </body>
 </html>

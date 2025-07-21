@@ -1,21 +1,14 @@
-#services:
-#  milvus:
-#    image: milvusdb/milvus:latest
-#    container_name: milvus
-#    command: ["milvus", "run", "standalone"]
-#    ports:
-#      - "19530:19530"   # gRPC
-#      - "19121:19121"   # HTTP REST
-#    environment:
-#      TZ: Asia/Shanghai
+# docker-compose.yml
+version: '3.8'
+
 services:
-  milvus-standalone:
-    image: milvusdb/milvus:latest
-    container_name: milvus
+  interview-radar:
+    build: .
+    container_name: interview-radar
     ports:
-      - "19530:19530"
-      - "9091:9091"
+      - "8080:8080"
     environment:
-      TZ: Asia/Shanghai
+      - SPRING_PROFILES_ACTIVE=prod
     volumes:
-      - ./volumes/milvus:/var/lib/milvus
+      - ./logs:/app/logs
+    restart: always
