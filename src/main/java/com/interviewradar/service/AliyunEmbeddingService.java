@@ -4,6 +4,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,12 +14,10 @@ import java.util.List;
  * 暴露原始向量 embedRaw 以及标准的 embed/embedAll 方法。
  */
 @Service
+@RequiredArgsConstructor
 public class AliyunEmbeddingService implements EmbeddingModel {
 
     private final EmbeddingModel delegate;
-    public AliyunEmbeddingService(EmbeddingModel delegate) {
-        this.delegate = delegate;
-    }
 
     /**
      * 拿到最原始的 float[] 向量

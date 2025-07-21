@@ -10,9 +10,13 @@ import com.interviewradar.model.repository.RawQuestionRepository;
 import com.interviewradar.model.repository.RawInterviewRepository;
 import com.interviewradar.llm.PromptTemplate;
 import dev.langchain4j.model.chat.ChatModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static com.interviewradar.common.Utils.extractJson;
 
@@ -33,10 +38,13 @@ public class RawQuestionExtractionService {
     @Autowired
     private RawQuestionExtractionService selfProxy;
 
+    private static final Logger log = LoggerFactory.getLogger(RawQuestionExtractionService.class);
+
     private final ChatModel chatModel;
     private final RawQuestionRepository questionRepo;
     private final RawInterviewRepository interviewRepo;
     private final ObjectMapper mapper;
+    private final ThreadPoolTaskExecutor taskExecutor;
 
     @Autowired
     public RawQuestionExtractionService(
@@ -44,12 +52,13 @@ public class RawQuestionExtractionService {
             ChatModel chatModel,
             RawQuestionRepository questionRepo,
             RawInterviewRepository interviewRepo,
-            ObjectMapper mapper
-    ) {
+            ObjectMapper mapper, ThreadPoolTaskExecutor taskExecutor
+            ) {
         this.chatModel = chatModel;
         this.questionRepo = questionRepo;
         this.interviewRepo = interviewRepo;
         this.mapper = mapper;
+        this.taskExecutor = taskExecutor;
     }
 
 
@@ -138,12 +147,21 @@ public class RawQuestionExtractionService {
      */
     public void extractAllInterviews() {
         List<RawInterview> pending = interviewRepo.findByQuestionsExtractedFalse();
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         for (RawInterview interview : pending) {
-            try {
-                selfProxy.extractAndSave(interview);
-            } catch (Exception e) {
-                System.err.println("面经提取失败 interviewId=" + interview.getId() + ": " + e.getMessage());
-            }
+            futures.add(
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            selfProxy.extractAndSave(interview);
+                        } catch (Exception e) {
+                            System.err.println("面经提取失败 interviewId=" + interview.getId() + ": " + e.getMessage());
+                        }
+                    }, taskExecutor)
+            );
         }
+
+        // 等待所有并发任务完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 }

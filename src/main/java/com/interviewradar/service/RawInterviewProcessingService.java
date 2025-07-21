@@ -33,7 +33,7 @@ public class RawInterviewProcessingService {
         log.info("开始提取问题任务");
         extractionService.extractAllInterviews();
 
-        // 提取完成后，直接同步触发分类流程
+        // 提取完成后，触发分类流程
         log.info("开始问题分类任务");
         classificationService.classifyAllRawQuestions();
 
@@ -42,7 +42,7 @@ public class RawInterviewProcessingService {
         standardizationService.standardizeAll();
 
         log.info("开始 LLM 决策任务");
-        judgementService.judgeAll();
+        judgementService.judgeAllConcurrent();
 
     }
 

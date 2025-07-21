@@ -7,12 +7,17 @@ import com.interviewradar.config.ClassificationProperties;
 import com.interviewradar.llm.PromptContext;
 import com.interviewradar.model.entity.Category;
 import com.interviewradar.model.entity.RawQuestion;
+import com.interviewradar.model.entity.RawQuestionCategory;
+import com.interviewradar.model.entity.RawQuestionCategoryId;
 import com.interviewradar.model.enums.TaskType;
 import com.interviewradar.model.repository.CategoryRepository;
+import com.interviewradar.model.repository.RawQuestionCategoryRepository;
 import com.interviewradar.model.repository.RawQuestionRepository;
 import com.interviewradar.llm.PromptTemplate;
 import dev.langchain4j.model.chat.ChatModel;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
@@ -21,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -34,24 +40,28 @@ public class RawQuestionClassificationService {
     @Autowired
     RawQuestionClassificationService selfProxy;
 
+    private static final Logger log = LoggerFactory.getLogger(RawQuestionClassificationService.class);
+
     private final ChatModel chatModel;                  // LangChain4j Chat model
     private final CategoryRepository categoryRepo;    // 类别仓库，读取所有可用类别
     private final RawQuestionRepository questionRepo;    // 题目仓库，用于保存分类结果
     private final ClassificationProperties props;     // batchSize 配置
     private final ObjectMapper objectMapper = new ObjectMapper(); // Jackson 对象映射器，用于解析 LLM 返回的 JSON
     private final ThreadPoolTaskExecutor taskExecutor;
+    private final RawQuestionCategoryRepository rawQuestionCategoryRepo;
 
     public RawQuestionClassificationService(
-                @Qualifier("deepseekChatModel")ChatModel chatModel,
-                CategoryRepository categoryRepo,
-                RawQuestionRepository questionRepo,
-                ClassificationProperties props,
-                ThreadPoolTaskExecutor taskExecutor) {
+            @Qualifier("deepseekChatModel")ChatModel chatModel,
+            CategoryRepository categoryRepo,
+            RawQuestionRepository questionRepo,
+            ClassificationProperties props,
+            ThreadPoolTaskExecutor taskExecutor, RawQuestionCategoryRepository rawQuestionCategoryRepo) {
         this.chatModel = chatModel;
         this.categoryRepo = categoryRepo;
         this.questionRepo = questionRepo;
         this.props = props;
         this.taskExecutor = taskExecutor;
+        this.rawQuestionCategoryRepo = rawQuestionCategoryRepo;
     }
 
 
@@ -82,7 +92,6 @@ public class RawQuestionClassificationService {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processBatch(List<RawQuestion> batch, String formattedCats) {
-        System.out.println("Thread ID: " + Thread.currentThread().getId() + ", Name: " + Thread.currentThread().getName());
 
         // 构造上下文
         List<Long> idList = batch.stream()
@@ -108,19 +117,27 @@ public class RawQuestionClassificationService {
             RawQuestion q = questionRepo.findById(detached.getId())
                     .orElseThrow(() -> new IllegalStateException("找不到问题实体 id=" + detached.getId()));
 
-            Set<Category> cats = q.getCategories();
-            List<String> names = new ArrayList<>();
+            List<String> categoryNames = new ArrayList<>();
+
             for (Long catId : chosen) {
-                categoryRepo.findById(catId).ifPresent(c -> {
-                    cats.add(c);
-                    names.add(c.getName());
-                });
+                Category c = categoryRepo.findById(catId)
+                        .orElseThrow(() -> new IllegalStateException("找不到分类 id=" + catId));
+
+                RawQuestionCategory link = RawQuestionCategory.builder()
+                        .id(new RawQuestionCategoryId(q.getId(), c.getId()))
+                        .rawQuestion(q)
+                        .category(c)
+                        .assignedAt(LocalDateTime.now())
+                        .build();
+
+                rawQuestionCategoryRepo.save(link);
+                categoryNames.add(c.getName());
             }
             q.setCategoriesAssigned(true);
             questionRepo.save(q);
 
             // 打印原问题及分类结果
-            System.out.println("原问题: " + questionText + " -> 分类: " + String.join(", ", names));
+            log.info("Thread ID:{},原问题:{}->分类:{}", Thread.currentThread().getId(), questionText, categoryNames);
         }
     }
     /**

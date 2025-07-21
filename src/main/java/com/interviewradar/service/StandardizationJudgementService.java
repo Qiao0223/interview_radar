@@ -14,14 +14,25 @@ import com.interviewradar.model.repository.StandardQuestionRepository;
 import com.interviewradar.model.repository.StandardizationCandidateRepository;
 import com.interviewradar.model.repository.RawToStandardMapRepository;
 import dev.langchain4j.model.chat.ChatModel;
-import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -34,42 +45,91 @@ public class StandardizationJudgementService {
     private final MilvusSearchHelper milvusSearchHelper;
     private final ChatModel chatModel;
     private final StandardQuestionCategoryRepository sqCatRepo;
+    private final ThreadPoolTaskExecutor taskExecutor;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${milvus.threshold:0}")
     private double threshold;
+    private static final Logger log = LoggerFactory.getLogger(StandardizationJudgementService.class);
 
-    public StandardizationJudgementService(StandardizationCandidateRepository candidateRepo,
-                                           StandardQuestionRepository questionRepo,
-                                           RawToStandardMapRepository mapRepo,
-                                           MilvusSearchHelper milvusSearchHelper,
-                                           @Qualifier("deepseekChatModel")ChatModel chatModel,
-                                           StandardQuestionCategoryRepository sqCatRepo) {
+    @Lazy
+    @Autowired
+    private StandardizationJudgementService self;
+
+    @Autowired
+    public StandardizationJudgementService(
+            StandardizationCandidateRepository candidateRepo,
+            StandardQuestionRepository questionRepo,
+            RawToStandardMapRepository mapRepo,
+            MilvusSearchHelper milvusSearchHelper,
+            @Qualifier("deepseekChatModel") ChatModel chatModel,
+            StandardQuestionCategoryRepository sqCatRepo,
+            ThreadPoolTaskExecutor taskExecutor
+    ) {
         this.candidateRepo = candidateRepo;
         this.questionRepo = questionRepo;
         this.mapRepo = mapRepo;
         this.milvusSearchHelper = milvusSearchHelper;
         this.chatModel = chatModel;
         this.sqCatRepo = sqCatRepo;
+        this.taskExecutor = taskExecutor;
     }
 
     /**
-     * 执行所有待 LLM 决策的候选
+     * 单线程处理所有候选
      */
-    public void judgeAll() {
-        var pending = candidateRepo.findByDecisionStatus(CandidateDecisionStatus.PENDING);
-        pending.forEach(this::processSingle);
+    public void judgeAllSingle() {
+        int page = 0;
+        int size = 100;
+        Page<StandardizationCandidate> pendingPage;
+
+        do {
+            PageRequest pageRequest = PageRequest.of(page, size);
+            pendingPage = candidateRepo.findByDecisionStatus(CandidateDecisionStatus.PENDING, pageRequest);
+            pendingPage.forEach(self::processSingle);
+            page++;
+        } while (pendingPage.hasNext());
     }
 
     /**
-     * 单条候选执行 LLM 决策，并设置决策状态
+     * 多线程批量处理所有候选，使用共享线程池
      */
+    public void judgeAllConcurrent() {
+        int page = 0;
+        int size = 100;
+        Page<StandardizationCandidate> pendingPage;
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        do {
+            PageRequest pageRequest = PageRequest.of(page, size);
+            pendingPage = candidateRepo.findByDecisionStatus(CandidateDecisionStatus.PENDING, pageRequest);
+            for (StandardizationCandidate cand : pendingPage) {
+                futures.add(
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                self.processSingle(cand);
+                            } catch (Exception ex) {
+                                // 捕获包括主键冲突在内的所有异常，记录后继续
+                                log.error("处理候选 {} 时失败，已忽略", cand.getId(), ex);
+                            }
+                        }, taskExecutor)
+                );
+            }
+            page++;
+        } while (pendingPage.hasNext());
+
+        // 等待所有任务完成
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
+
+
     @Transactional
     public void processSingle(StandardizationCandidate cand) {
         Long candId = cand.getId();
-        cand = candidateRepo.findById(candId).orElseThrow();
+        cand = candidateRepo.findWithRawQuestionAndCategoriesById(candId)
+                .orElseThrow(() -> new RuntimeException("Candidate not found: " + candId));
 
-        // 解析 embedding
+        // 业务计算省略（同原实现）
         float[] vector;
         try {
             vector = objectMapper.readValue(cand.getEmbedding(), float[].class);
@@ -77,32 +137,23 @@ public class StandardizationJudgementService {
             throw new RuntimeException("解析 embedding 失败, id=" + candId, e);
         }
 
-        // Top-K 检索
         var idScores = milvusSearchHelper.search(vector);
         List<ScoredStandardDTO> standards = idScores.stream()
-                .map(scorePair -> {
-                    String status = "";
-                    try {
-                        Object val = scorePair.get("status");
-                        status = val != null ? val.toString() : "";
-                    } catch (Exception e) {
-                        throw new RuntimeException("获取 status 失败", e);
-                    }
-                    return new ScoredStandardDTO(
-                            scorePair.getLongID(),
-                            scorePair.getScore(),
-                            status
-                    );
-                })
+                .map(scorePair -> new ScoredStandardDTO(
+                        scorePair.getLongID(),
+                        scorePair.getScore(),
+                        scorePair.get("status") != null ? scorePair.get("status").toString() : "",
+                        scorePair.get("question_text") != null ? scorePair.get("question_text").toString() : ""
+                ))
                 .collect(Collectors.toList());
 
-        // 构造对话
         PromptContext.add(TaskType.JUDGEMENT, candId);
-
-        // 构造 Prompt 并调用 LLM
         String prompt = buildDecisionPrompt(cand.getCandidateText(), standards);
         String rawResp = chatModel.chat(prompt);
         String json = Utils.extractJson(rawResp);
+
+        log.info("候选问题: {}，检索到标准候选: {}", cand.getCandidateText(), standards);
+        log.info("LLM 原始返回: {}", rawResp);
 
         CandidateDecisionDTO decision;
         try {
@@ -111,49 +162,64 @@ public class StandardizationJudgementService {
             throw new RuntimeException("解析 LLM 决策失败: " + json, e);
         }
 
-        // 根据决策应用
-        applyDecision(cand, decision);
-    }
+        if (decision.getAction() == CandidateAction.REUSE) {
+            Set<Long> validIds = standards.stream()
+                    .map(ScoredStandardDTO::getId)
+                    .collect(Collectors.toSet());
+            if (!validIds.contains(decision.getChosenId())) {
+                log.error("LLM 返回了无效的 ID: {}，有效 ID 列表: {}，将重试处理", decision.getChosenId(), validIds);
+                return;
+            }
+        }
 
-    /**
-     * 构造 LLM 决策 Prompt
-     */
-    private String buildDecisionPrompt(String question, List<ScoredStandardDTO> candidates) {
-        String template = PromptTemplate.CANDIDATE_DECISION.getTemplate();
-        String candidatesBlock = IntStream.range(0, candidates.size())
-                .mapToObj(i -> {
-                    ScoredStandardDTO c = candidates.get(i);
-                    String text = questionRepo.findById(c.getId())
-                            .map(StandardQuestion::getQuestionText)
-                            .orElse("未知标准问法");
-                    return String.format("%d. “%s” (Id=%d)", i + 1, text, c.getId());
-                })
-                .collect(Collectors.joining("\n"));
-        return template
-                .replace("${question}", question)
-                .replace("${standards}", candidatesBlock);
-    }
-
-    /**
-     * 根据 LLM 决策应用不同逻辑，并设置相应状态
-     */
-    @Transactional
-    public void applyDecision(StandardizationCandidate cand, CandidateDecisionDTO dec) {
-        switch (dec.getAction()) {
-            case REUSE -> applyReuseDecision(cand, dec.getChosenId());
+        switch (decision.getAction()) {
+            case REUSE -> applyReuseDecision(cand, decision.getChosenId());
             case CREATE -> applyCreateDecision(cand);
             case SKIP -> {
                 cand.setDecisionStatus(CandidateDecisionStatus.SKIP);
                 cand.setPromotionStatus(CandidatePromotionStatus.SKIPPED);
             }
         }
+
         cand.setReviewStatus(CandidateReviewStatus.PENDING);
         candidateRepo.save(cand);
+
+        if (decision.getAction() == CandidateAction.CREATE) {
+            final long stdId = cand.getMatchedStandard().getId();
+            final String embJson = cand.getEmbedding();
+            final String text = cand.getMatchedStandard().getQuestionText();
+
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        float[] vec = objectMapper.readValue(embJson, float[].class);
+                        milvusSearchHelper.insertStandardQuestion(
+                                stdId,
+                                vec,
+                                text,
+                                0
+                        );
+                    } catch (Exception e) {
+                        log.error("Milvus 插入失败", e);
+                    }
+                }
+            });
+        }
     }
 
-    /**
-     * 应用 REUSE 决策：更新 usageCount、建立映射、同步分类
-     */
+    private String buildDecisionPrompt(String question, List<ScoredStandardDTO> candidates) {
+        String template = PromptTemplate.CANDIDATE_DECISION.getTemplate();
+        String block = IntStream.range(0, candidates.size())
+                .mapToObj(i -> {
+                    ScoredStandardDTO c = candidates.get(i);
+                    return String.format("%d. ‘%s’ (Id=%d)", i+1, c.getQuestionText(), c.getId());
+                })
+                .collect(Collectors.joining("\n"));
+        return template.replace("${question}", question)
+                .replace("${standards}", block);
+    }
+
     private void applyReuseDecision(StandardizationCandidate cand, Long chosenId) {
         var sq = questionRepo.getReferenceById(chosenId);
         sq.setUsageCount(sq.getUsageCount() + 1);
@@ -161,40 +227,33 @@ public class StandardizationJudgementService {
 
         cand.setMatchedStandard(sq);
 
-        RawToStandardMap map = RawToStandardMap.builder()
-                .id(new RawToStandardMapId(cand.getRawQuestion().getId(), sq.getId()))
-                .rawQuestion(cand.getRawQuestion())
-                .standardQuestion(sq)
-                .build();
-        mapRepo.save(map);
+        // 只在映射不存在时才插入
+        RawToStandardMapId mapId = new RawToStandardMapId(
+                cand.getRawQuestion().getId(), sq.getId()
+        );
+        if (!mapRepo.existsById(mapId)) {
+            mapRepo.save(RawToStandardMap.builder()
+                    .id(mapId)
+                    .rawQuestion(cand.getRawQuestion())
+                    .standardQuestion(sq)
+                    .build());
+        } else {
+            log.debug("映射 {} 已存在，跳过保存", mapId);
+        }
 
-        List<StandardQuestionCategory> joins = sqCatRepo.findByStandardQuestionId(sq.getId());
-        Set<Category> standardCats = joins.stream()
+        Set<Category> stdCats = sqCatRepo.findByStandardQuestionId(sq.getId()).stream()
                 .map(StandardQuestionCategory::getCategory)
                 .collect(Collectors.toSet());
-
-        Set<Category> rawCats = cand.getRawQuestion().getCategories();
-        rawCats.stream()
-                .filter(cat -> !standardCats.contains(cat))
-                .forEach(cat -> {
-                    var id = new StandardQuestionCategoryId(sq.getId(), cat.getId());
-                    var join = new StandardQuestionCategory();
-                    join.setId(id);
-                    join.setStandardQuestion(sq);
-                    join.setCategory(cat);
-                    sqCatRepo.save(join);
-                });
+        cand.getRawQuestion().getCategories().stream()
+                .filter(cat -> !stdCats.contains(cat))
+                .forEach(cat -> sqCatRepo.save(new StandardQuestionCategory(
+                        new StandardQuestionCategoryId(sq.getId(), cat.getId()), sq, cat)));
 
         cand.setDecisionStatus(CandidateDecisionStatus.REUSE);
-        cand.setReviewStatus(CandidateReviewStatus.PENDING);
         cand.setPromotionStatus(CandidatePromotionStatus.MERGED);
     }
 
-    /**
-     * 处理 CREATE 决策：创建新标准问法并设置状态
-     */
     private void applyCreateDecision(StandardizationCandidate cand) {
-        // 1. 新建标准问法
         StandardQuestion sq = new StandardQuestion();
         sq.setQuestionText(cand.getCandidateText());
         sq.setStatus(StandardStatus.PENDING);
@@ -203,41 +262,29 @@ public class StandardizationJudgementService {
         sq.setCreatedAt(LocalDateTime.now());
         sq.setUpdatedAt(LocalDateTime.now());
         sq.setEmbedding(cand.getEmbedding());
-
-        // 1 保存——第 1 次持久化会同时插入标准问法和中间表
         questionRepo.save(sq);
 
-        // 2. 把向量插入 Milvus（不影响关系库）
-        float[] vec;
-        try {
-            vec = objectMapper.readValue(cand.getEmbedding(), float[].class);
-        } catch (Exception e) {
-            throw new RuntimeException("解析新向量失败 id=" + sq.getId(), e);
-        }
-        milvusSearchHelper.insertStandardQuestion(sq.getId(), vec, sq.getQuestionText(), 0);
-
-        // 3. 把 raw→standard 的映射也入库（使用 Builder 确保 mappedAt 非空）
-        RawToStandardMap map = RawToStandardMap.builder()
-                .id(new RawToStandardMapId(cand.getRawQuestion().getId(), sq.getId()))
-                .rawQuestion(cand.getRawQuestion())
-                .standardQuestion(sq)
-                .build();
-        mapRepo.save(map);
-
-        // 4. 分类继承到 join 表
-        for (Category cat : cand.getRawQuestion().getCategories()) {
-            StandardQuestionCategoryId id = new StandardQuestionCategoryId(sq.getId(), cat.getId());
-            StandardQuestionCategory join = new StandardQuestionCategory();
-            join.setId(id);
-            join.setStandardQuestion(sq);
-            join.setCategory(cat);
-            sqCatRepo.save(join);
+        // 只在映射不存在时才插入
+        RawToStandardMapId mapId = new RawToStandardMapId(
+                cand.getRawQuestion().getId(), sq.getId()
+        );
+        if (!mapRepo.existsById(mapId)) {
+            mapRepo.save(RawToStandardMap.builder()
+                    .id(mapId)
+                    .rawQuestion(cand.getRawQuestion())
+                    .standardQuestion(sq)
+                    .build());
+        } else {
+            log.debug("映射 {} 已存在，跳过保存", mapId);
         }
 
-        // 5. 更新 candidate 的三个状态
+        cand.getRawQuestion().getCategories().forEach(cat ->
+                sqCatRepo.save(new StandardQuestionCategory(
+                        new StandardQuestionCategoryId(sq.getId(), cat.getId()), sq, cat))
+        );
+
+        cand.setMatchedStandard(sq);
         cand.setDecisionStatus(CandidateDecisionStatus.CREATE);
-        cand.setReviewStatus(CandidateReviewStatus.PENDING);
         cand.setPromotionStatus(CandidatePromotionStatus.PROMOTED);
-        candidateRepo.save(cand);
     }
 }

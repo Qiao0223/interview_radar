@@ -1,18 +1,11 @@
 package com.interviewradar;
 
-import com.interviewradar.model.entity.Category;
-import com.interviewradar.model.entity.RawInterview;
 import com.interviewradar.model.entity.RawQuestion;
-import com.interviewradar.model.repository.CategoryRepository;
 import com.interviewradar.model.repository.RawQuestionRepository;
-import com.interviewradar.model.repository.RawInterviewRepository;
-import dev.langchain4j.model.chat.ChatModel;
 import com.interviewradar.service.RawQuestionClassificationService;
-import lombok.RequiredArgsConstructor;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -29,13 +22,14 @@ public class ClassificationTests {
     RawQuestionRepository questionRepo;
 
     @Test
-    public void classifyBatch_directDbAndRealLlm() {
-        // 从数据库读取所有 Question，并调用 classifyBatch
+    public void classifyBatchSingle() {
+        List<RawQuestion> questions = questionRepo.findTop1ByCategoriesAssignedFalse();
+        classificationService.classifyBatch(questions);
+    }
+
+    @Test
+    public void classifyBatchAll() {
         List<RawQuestion> questions = questionRepo.findByCategoriesAssignedFalse();
         classificationService.classifyBatch(questions);
-
-        // 重新从数据库加载，验证每条题目都被标记为已分类，且至少有一个 Category
-        List<RawQuestion> updated = questionRepo.findAll();
-
     }
 }

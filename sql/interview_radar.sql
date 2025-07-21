@@ -11,7 +11,7 @@
  Target Server Version : 80042 (8.0.42)
  File Encoding         : 65001
 
- Date: 13/07/2025 14:34:59
+ Date: 18/07/2025 18:24:59
 */
 
 SET NAMES utf8mb4;
@@ -52,15 +52,20 @@ CREATE TABLE `entity_review_log`  (
 -- ----------------------------
 DROP TABLE IF EXISTS `prompt_log`;
 CREATE TABLE `prompt_log`  (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `candidate_id` bigint NOT NULL,
-  `prompt_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `response_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `candidate_id`(`candidate_id` ASC) USING BTREE,
-  CONSTRAINT `prompt_log_ibfk_1` FOREIGN KEY (`candidate_id`) REFERENCES `standardization_candidate` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+  `task_type` enum('STANDARDIZATION','CLASSIFICATION','EXTRACTION','UNKNOWN','JUDGEMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '任务类型',
+  `task_id` bigint NULL DEFAULT NULL COMMENT '任务关联的主键ID',
+  `model_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '调用的 LLM 模型名称',
+  `prompt` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '实际发送的 prompt',
+  `response` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '模型的返回内容',
+  `duration_ms` int NULL DEFAULT NULL COMMENT '响应耗时（毫秒）',
+  `success` tinyint(1) NULL DEFAULT 1 COMMENT '是否成功',
+  `error_message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '失败时的错误信息',
+  `model_version` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'Prompt 模板版本号',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 5444 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LLM Prompt 请求日志' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for raw_interview
@@ -91,7 +96,7 @@ CREATE TABLE `raw_question`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_q_interview`(`interview_id` ASC) USING BTREE,
   CONSTRAINT `fk_extracted_question_interview` FOREIGN KEY (`interview_id`) REFERENCES `raw_interview` (`content_id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 10005 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '原始抽取问题表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 10260 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '原始抽取问题表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for raw_question_category
@@ -139,8 +144,9 @@ CREATE TABLE `standard_question`  (
   `review_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `embedding` json NOT NULL,
-  PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uq_standard_question_text`(`question_text`(255) ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 300 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for standard_question_category
@@ -162,10 +168,12 @@ DROP TABLE IF EXISTS `standardization_candidate`;
 CREATE TABLE `standardization_candidate`  (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `candidate_text` text CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-  `embedding` json NULL,
+  `embedding` json NOT NULL,
   `raw_question_id` bigint NOT NULL,
   `matched_standard_id` bigint NULL DEFAULT NULL,
-  `status` enum('PENDING','MERGED','PROMOTED','SKIPPED','UNDER_REVIEW') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'PENDING',
+  `decision_status` enum('PENDING','CREATE','REUSE','SKIP') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'PENDING',
+  `promotion_status` enum('NONE','PROMOTED','MERGED','SKIPPED') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'NONE',
+  `review_status` enum('PENDING','APPROVED','REJECTED') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'PENDING',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
@@ -173,7 +181,7 @@ CREATE TABLE `standardization_candidate`  (
   INDEX `matched_canonical_id`(`matched_standard_id` ASC) USING BTREE,
   CONSTRAINT `standardization_candidate_ibfk_1` FOREIGN KEY (`raw_question_id`) REFERENCES `raw_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `standardization_candidate_ibfk_2` FOREIGN KEY (`matched_standard_id`) REFERENCES `standard_question` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 7167 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 7465 CHARACTER SET = utf8mb3 COLLATE = utf8mb3_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for topic

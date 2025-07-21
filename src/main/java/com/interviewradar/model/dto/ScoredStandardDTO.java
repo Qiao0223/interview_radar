@@ -9,4 +9,5 @@ public class ScoredStandardDTO {
     private Long id;
     private Float score;
     private String status;
+    private String questionText;
 }

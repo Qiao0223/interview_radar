@@ -185,12 +185,12 @@ public enum PromptTemplate {
     “线程池创建模式” (Id=37)
     3. 根据以下判断逻辑输出决策。
     决策规则： \s
-    - REUSE：若候选问法与某条标准问法在含义上完全一致（即问的是同一件事），则复用该标准问法： \s
+    - REUSE：若候选问法与某条标准问法在含义上完全一致（即问的是同一件事）或者被包含于某条标准问法，则复用该标准问法： \s
     { "action": "REUSE", "chosenId": <该标准问法的数据库 Id> }
     - CREATE：若无任何完全一致，但候选问法有实际意义且列表中未覆盖，则创建新标准问法：
     { "action": "CREATE", "newStandard": "question原文" }
     - SKIP：若候选问法为噪声、无意义或无关，则跳过：
-    { "action": "SKIP", "skipReason":"选择SKIP的原因" }
+    { "action": "SKIP", "skipReason":"选择SKIP的原因，可以自己写合适的原因" }
     
     严格要求
     1.仅输出上述 JSON，禁止任何额外文字、注释或格式；
@@ -223,6 +223,15 @@ public enum PromptTemplate {
     4. “死锁概述” (Id=85)
     输出：
     { "action": "CREATE", "newStandard": "热部署原理" }
+    
+    示例4：
+    question: “缓存击穿”
+    standards:
+    1. “缓存击穿 缓存雪崩 缓存穿透” (Id=160)
+    2. “分布式追踪” (Id=266)
+    3. “ConcurrentHashMap 概述” (Id=399)
+    输出：
+    { "action": "REUSE", "chosenId": "160" }
     
     现在，请根据上述规则，处理下面内容，并严格返回 JSON：
     面试中的问题：
