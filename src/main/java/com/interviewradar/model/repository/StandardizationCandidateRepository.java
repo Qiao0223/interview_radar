@@ -23,4 +23,6 @@ public interface StandardizationCandidateRepository extends JpaRepository<Standa
     Optional<StandardizationCandidate> findWithRawQuestionAndCategoriesById(Long id);
 
     Page<StandardizationCandidate> findByDecisionStatus(CandidateDecisionStatus status, Pageable pageable);
+
+    List<StandardizationCandidate> findByMatchedStandardId(Long standardId);
 }

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Standard Questions</title>
+    <style>
+        table {border-collapse: collapse; width: 100%;}
+        th, td {border: 1px solid #ccc; padding: 8px; vertical-align: top;}
+    </style>
+</head>
+<body>
+<h1>Standard Questions</h1>
+<table>
+    <thead>
+    <tr>
+        <th>Question</th>
+        <th>Status</th>
+        <th>Usage Count</th>
+        <th>最近考察时间</th>
+        <th>Categories</th>
+        <th>Standardization Candidates</th>
+        <th>Raw Questions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="q : ${questions}">
+        <td th:text="${q.questionText}"></td>
+        <td th:text="${q.status}"></td>
+        <td th:text="${q.usageCount}"></td>
+        <td th:text="${#temporals.format(q.updatedAt, 'yyyy-MM-dd HH:mm')}"></td>
+        <td>
+            <ul>
+                <li th:each="c : ${q.categories}" th:text="${c}"></li>
+            </ul>
+        </td>
+        <td>
+            <ul>
+                <li th:each="c : ${q.candidateTexts}" th:text="${c}"></li>
+            </ul>
+        </td>
+        <td>
+            <ul>
+                <li th:each="r : ${q.rawQuestions}" th:text="${r}"></li>
+            </ul>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>
