@@ -2,7 +2,7 @@ spring:
     datasource:
         url: jdbc:mysql://115.190.83.184:3306/interview_radar?useSSL=false&serverTimezone=Asia/Shanghai
         username: admin
-        password: Sj.4330450
+        password: 
         hikari:
             maximum-pool-size: 300     # 连接池最大连接数
             minimum-idle: 10          # 最小空闲连接
@@ -17,25 +17,25 @@ spring:
 langchain4j:
     deepseek:
         chat:
-            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+            api-key: 
             base-url: https://api.deepseek.com/v1
             model-name: deepseek-chat
             timeout: 600s
         reasoner:
-            api-key: sk-45d3870db5ee4d2b8d4c9ade425dbadd
+            api-key: 
             base-url: https://api.deepseek.com/v1
             model-name: deepseek-reasoner
             timeout: 600s
     aliyun:
         qwen-plus:
-            api-key: sk-c8537643758b4d8da98f06a99dc603d9
+            api-key: 
             base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
             model-name: qwen-plus
             timeout: 600s
 
 aliyun:
     embedding:
-        api-key: sk-c8537643758b4d8da98f06a99dc603d9
+        api-key: 
         base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
         model: text-embedding-v4
         dimension: 1024
