@@ -2,16 +2,14 @@ package com.interviewradar.service;
 
 import com.interviewradar.model.dto.StandardQuestionViewDTO;
 import com.interviewradar.model.entity.StandardQuestion;
+import com.interviewradar.model.entity.StandardizationCandidate;
 import com.interviewradar.model.repository.RawToStandardMapRepository;
 import com.interviewradar.model.repository.StandardQuestionCategoryRepository;
 import com.interviewradar.model.repository.StandardQuestionRepository;
 import com.interviewradar.model.repository.StandardizationCandidateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -40,7 +38,7 @@ public class StandardQuestionService {
             var rawQs = mapRepo.findByIdStandardQuestionId(q.getId())
                     .stream().map(m -> m.getRawQuestion().getQuestionText()).collect(Collectors.toList());
             var cands = candRepo.findByMatchedStandardId(q.getId())
-                    .stream().map(c -> c.getCandidateText()).collect(Collectors.toList());
+                    .stream().map(StandardizationCandidate::getCandidateText).collect(Collectors.toList());
             return StandardQuestionViewDTO.builder()
                     .id(q.getId())
                     .questionText(q.getQuestionText())
@@ -80,5 +78,25 @@ public class StandardQuestionService {
                     .candidateTexts(cands)
                     .build();
         });
+    }
+
+    public Page<StandardQuestionViewDTO> findAllAggregated(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        var projectionPage = questionRepo.findAllAggregated(pageable);
+
+        List<StandardQuestionViewDTO> dtoList = projectionPage.getContent().stream()
+                .map(p -> StandardQuestionViewDTO.builder()
+                        .id(p.getId())
+                        .questionText(p.getQuestionText())
+                        .status(p.getStatus())
+                        .usageCount(p.getUsageCount())
+                        .updatedAt(p.getShowTime())
+                        .categories(p.getCategories() != null ? List.of(p.getCategories().split(" \\| ")) : List.of())
+                        .rawQuestions(p.getRawQuestions() != null ? List.of(p.getRawQuestions().split(" \\| ")) : List.of())
+                        .candidateTexts(p.getCandidateTexts() != null ? List.of(p.getCandidateTexts().split(" \\| ")) : List.of())
+                        .build())
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtoList, pageable, projectionPage.getTotalElements());
     }
 }

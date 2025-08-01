@@ -23,7 +23,7 @@
     <tr>
         <th>问题</th>
         <th>状态</th>
-        <th>使用次数</th>
+        <th>考察次数</th>
         <th>最近考察时间</th>
         <th>分类</th>
         <th>候选文本</th>
@@ -44,15 +44,16 @@
 </table>
 <div class="pagination">
     <a th:if="${page.hasPrevious()}"
-       th:href="@{/standard-questions(page=${page.number-1}, size=${size}, q=${q})}">上一页</a>
-    <span th:each="i : ${#numbers.sequence(0, page.totalPages-1)}">
+       th:href="@{/standard-questions(page=${page.number - 1}, size=${size}, q=${q})}">上一页</a>
+    <span th:each="i : ${#numbers.sequence(0, (page.totalPages - 1))}">
         <a th:if="${i != page.number}"
            th:href="@{/standard-questions(page=${i}, size=${size}, q=${q})}"
-           th:text="${i+1}"></a>
-        <span th:if="${i == page.number}" class="current" th:text="${i+1}"></span>
+           th:text="${i + 1}"></a>
+        <span th:if="${i == page.number}" class="current" th:text="${i + 1}"></span>
     </span>
     <a th:if="${page.hasNext()}"
-       th:href="@{/standard-questions(page=${page.number+1}, size=${size}, q=${q})}">下一页</a>
+       th:href="@{/standard-questions(page=${page.number + 1}, size=${size}, q=${q})}">下一页</a>
 </div>
+
 </body>
 </html>
